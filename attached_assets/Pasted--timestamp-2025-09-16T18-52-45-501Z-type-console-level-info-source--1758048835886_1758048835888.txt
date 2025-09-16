@@ -1,0 +1,290 @@
+{
+  "timestamp": "2025-09-16T18:52:45.501Z",
+  "type": "console",
+  "level": "info",
+  "source": "browser_console",
+  "data": {
+    "message": "ℹ️ This is an info message from the test app ",
+    "arguments": [
+      {
+        "type": "string",
+        "value": "ℹ️ This is an info message from the test app"
+      },
+      {
+        "type": "object",
+        "className": "Object",
+        "description": "Object",
+        "objectId": "7611718395421867222.2.1",
+        "preview": {
+          "type": "object",
+          "description": "Object",
+          "overflow": false,
+          "properties": [
+            {
+              "name": "timestamp",
+              "type": "string",
+              "value": "2025-09-16T18:52:45.501Z"
+            }
+          ]
+        }
+      }
+    ],
+    "stackTrace": {
+      "callFrames": [
+        {
+          "functionName": "logInfo",
+          "scriptId": "5",
+          "url": "http://localhost:5000/app.js",
+          "lineNumber": 6,
+          "columnNumber": 12
+        },
+        {
+          "functionName": "onclick",
+          "scriptId": "6",
+          "url": "http://localhost:5000/",
+          "lineNumber": 84,
+          "columnNumber": 40
+        }
+      ]
+    }
+  },
+  "context": {}
+}
+{
+  "timestamp": "2025-09-16T18:53:08.991Z",
+  "type": "network",
+  "level": "info",
+  "source": "network_request",
+  "data": {
+    "request": {
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/posts/1",
+      "headers": {
+        "sec-ch-ua-platform": "\"Windows\"",
+        "Referer": "http://localhost:5000/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+        "sec-ch-ua": "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Google Chrome\";v=\"140\"",
+        "sec-ch-ua-mobile": "?0"
+      }
+    },
+    "response": {
+      "statusCode": 0
+    }
+  },
+  "context": {
+    "url": "https://jsonplaceholder.typicode.com/posts/1",
+    "method": "GET",
+    "statusCode": 0
+  }
+}
+{
+  "timestamp": "2025-09-16T18:53:13.078Z",
+  "type": "network",
+  "level": "info",
+  "source": "network_request",
+  "data": {
+    "request": {
+      "method": "UNKNOWN",
+      "url": "https://jsonplaceholder.typicode.com/posts/1",
+      "headers": {
+        "content-encoding": "zstd",
+        "cf-cache-status": "HIT",
+        "etag": "W/\"124-yiKdLzqO5gfBrJFrcdJ8Yq0LGnU\"",
+        "age": "5398",
+        "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=eFT9reCVe1NCbseyQXxvA2whj%2BfetiZ8RxBKpSuCeuE%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1757928189\"}],\"max_age\":3600}",
+        "x-content-type-options": "nosniff",
+        "expires": "-1",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "date": "Tue, 16 Sep 2025 18:53:13 GMT",
+        "content-type": "application/json; charset=utf-8",
+        "vary": "Origin, Accept-Encoding",
+        "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=eFT9reCVe1NCbseyQXxvA2whj%2BfetiZ8RxBKpSuCeuE%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1757928189\"",
+        "cache-control": "max-age=43200",
+        "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+        "pragma": "no-cache",
+        "access-control-allow-credentials": "true",
+        "x-ratelimit-reset": "1757928242",
+        "via": "2.0 heroku-router",
+        "x-ratelimit-remaining": "999",
+        "cf-ray": "980290bcafb6ce33-SIN",
+        "x-ratelimit-limit": "1000",
+        "x-powered-by": "Express",
+        "server": "cloudflare"
+      }
+    },
+    "response": {
+      "statusCode": 200,
+      "body": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "status": 200,
+        "statusText": "",
+        "headers": {
+          "content-encoding": "zstd",
+          "cf-cache-status": "HIT",
+          "etag": "W/\"124-yiKdLzqO5gfBrJFrcdJ8Yq0LGnU\"",
+          "age": "5398",
+          "report-to": "{\"group\":\"heroku-nel\",\"endpoints\":[{\"url\":\"https://nel.heroku.com/reports?s=eFT9reCVe1NCbseyQXxvA2whj%2BfetiZ8RxBKpSuCeuE%3D\\u0026sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d\\u0026ts=1757928189\"}],\"max_age\":3600}",
+          "x-content-type-options": "nosniff",
+          "expires": "-1",
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "date": "Tue, 16 Sep 2025 18:53:13 GMT",
+          "content-type": "application/json; charset=utf-8",
+          "vary": "Origin, Accept-Encoding",
+          "reporting-endpoints": "heroku-nel=\"https://nel.heroku.com/reports?s=eFT9reCVe1NCbseyQXxvA2whj%2BfetiZ8RxBKpSuCeuE%3D&sid=e11707d5-02a7-43ef-b45e-2cf4d2036f7d&ts=1757928189\"",
+          "cache-control": "max-age=43200",
+          "nel": "{\"report_to\":\"heroku-nel\",\"response_headers\":[\"Via\"],\"max_age\":3600,\"success_fraction\":0.01,\"failure_fraction\":0.1}",
+          "pragma": "no-cache",
+          "access-control-allow-credentials": "true",
+          "x-ratelimit-reset": "1757928242",
+          "via": "2.0 heroku-router",
+          "x-ratelimit-remaining": "999",
+          "cf-ray": "980290bcafb6ce33-SIN",
+          "x-ratelimit-limit": "1000",
+          "x-powered-by": "Express",
+          "server": "cloudflare"
+        },
+        "mimeType": "application/json",
+        "charset": "utf-8",
+        "connectionReused": false,
+        "connectionId": 368,
+        "remoteIPAddress": "[2606:4700:3030::6815:1001]",
+        "remotePort": 443,
+        "fromDiskCache": false,
+        "fromServiceWorker": false,
+        "fromPrefetchCache": false,
+        "encodedDataLength": 777,
+        "timing": {
+          "requestTime": 36258.487504,
+          "proxyStart": -1,
+          "proxyEnd": -1,
+          "dnsStart": 1.917,
+          "dnsEnd": 32.9,
+          "connectStart": 33.183,
+          "connectEnd": 3842.242,
+          "sslStart": 269.364,
+          "sslEnd": 3842.229,
+          "workerStart": -1,
+          "workerReady": -1,
+          "workerFetchStart": -1,
+          "workerRespondWithSettled": -1,
+          "sendStart": 3842.784,
+          "sendEnd": 3843.175,
+          "pushStart": 0,
+          "pushEnd": 0,
+          "receiveHeadersStart": 4083.889,
+          "receiveHeadersEnd": 4084.567
+        },
+        "responseTime": 1758048793076.655,
+        "protocol": "h2",
+        "alternateProtocolUsage": "unspecifiedReason",
+        "securityState": "secure",
+        "securityDetails": {
+          "protocol": "TLS 1.3",
+          "keyExchange": "",
+          "keyExchangeGroup": "X25519MLKEM768",
+          "cipher": "AES_128_GCM",
+          "certificateId": 0,
+          "subjectName": "typicode.com",
+          "sanList": [
+            "typicode.com",
+            "*.typicode.com"
+          ],
+          "issuer": "WE1",
+          "validFrom": 1754735824,
+          "validTo": 1762515241,
+          "signedCertificateTimestampList": [
+            {
+              "status": "Verified",
+              "origin": "Embedded in certificate",
+              "logDescription": "Cloudflare 'Nimbus2025'",
+              "logId": "CCFB0F6A85710965FE959B53CEE9B27C22E9855C0D978DB6A97E54C0FE4C0DB0",
+              "timestamp": 1754739425792,
+              "hashAlgorithm": "SHA-256",
+              "signatureAlgorithm": "ECDSA",
+              "signatureData": "30440220168A498782928847C10E9A491FABB8E86BD013C2C32D042876EF1ABE695B7A37022017BE581C5F9754F838436EFB49E1EEC2178A79CF8C9EBD330A2B44F1E0F3F73E"
+            },
+            {
+              "status": "Verified",
+              "origin": "Embedded in certificate",
+              "logDescription": "Google 'Xenon2025h2' log",
+              "logId": "DDDCCA3495D7E11605E79532FAC79FF83D1C50DFDB003A1412760A2CACBBC82A",
+              "timestamp": 1754739424744,
+              "hashAlgorithm": "SHA-256",
+              "signatureAlgorithm": "ECDSA",
+              "signatureData": "3045022100B312EAD629FEC0AC004D277A14D2312E621C123AF861470F9ECF9D2E0063ACC202202C6B775BD1E863E63EF8E9FCD1EB5F536041346BCF1C14C7291725D002FEE0DD"
+            }
+          ],
+          "certificateTransparencyCompliance": "compliant",
+          "serverSignatureAlgorithm": 1027,
+          "encryptedClientHello": false
+        },
+        "isIpProtectionUsed": false
+      }
+    }
+  },
+  "context": {
+    "url": "https://jsonplaceholder.typicode.com/posts/1",
+    "method": "UNKNOWN",
+    "statusCode": 200
+  }
+}
+{
+  "timestamp": "2025-09-16T18:53:13.081Z",
+  "type": "console",
+  "level": "info",
+  "source": "browser_console",
+  "data": {
+    "message": "✅ API Response received: ",
+    "arguments": [
+      {
+        "type": "string",
+        "value": "✅ API Response received:"
+      },
+      {
+        "type": "object",
+        "className": "Object",
+        "description": "Object",
+        "objectId": "7611718395421867222.2.2",
+        "preview": {
+          "type": "object",
+          "description": "Object",
+          "overflow": false,
+          "properties": [
+            {
+              "name": "userId",
+              "type": "number",
+              "value": "1"
+            },
+            {
+              "name": "id",
+              "type": "number",
+              "value": "1"
+            },
+            {
+              "name": "title",
+              "type": "string",
+              "value": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit"
+            },
+            {
+              "name": "body",
+              "type": "string",
+              "value": "quia et suscipit\nsuscipit recusandae consequuntur …strum rerum est autem sunt rem eveniet architecto"
+            }
+          ]
+        }
+      }
+    ],
+    "stackTrace": {
+      "callFrames": [
+        {
+          "functionName": "makeSuccessRequest",
+          "scriptId": "5",
+          "url": "http://localhost:5000/app.js",
+          "lineNumber": 38,
+          "columnNumber": 16
+        }
+      ]
+    }
+  },
+  "context": {}
+}

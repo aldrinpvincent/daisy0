@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { DaisyLogger } from './logger';
+import { DaisyLogger, LogLevel } from './logger';
 import { ChromeLauncher } from './chrome-launcher';
 import { DevToolsMonitor } from './devtools-monitor';
 import { ScriptRunner } from './script-runner';
@@ -50,6 +50,7 @@ program
   .option('-s, --script <script>', 'Script to run (e.g., "dev" for npm run dev)')
   .option('-p, --port <port>', 'Chrome remote debugging port', '9222')
   .option('-l, --log-file <file>', 'Log file path', 'daisy-debug.log')
+  .option('--log-level <level>', 'Log verbosity level: minimal, standard, verbose', 'standard')
   .action(async (options) => {
     if (!options.script) {
       console.error('Error: --script parameter is required');
@@ -57,10 +58,19 @@ program
     }
 
     const logFile = path.resolve(process.cwd(), options.logFile);
-    const logger = new DaisyLogger(logFile);
+    const logLevel = options.logLevel as LogLevel;
+    
+    // Validate log level
+    if (!['minimal', 'standard', 'verbose'].includes(logLevel)) {
+      console.error('Error: --log-level must be one of: minimal, standard, verbose');
+      process.exit(1);
+    }
+    
+    const logger = new DaisyLogger(logFile, logLevel);
     
     console.log(`🌼 Daisy starting...`);
     console.log(`📝 Logging to: ${logFile}`);
+    console.log(`📊 Log level: ${logLevel}`);
     console.log(`🚀 Running script: ${options.script}`);
     
     try {

@@ -1,3 +1,4 @@
+export type LogLevel = 'minimal' | 'standard' | 'verbose';
 export interface LogEntry {
     timestamp: string;
     type: 'console' | 'network' | 'error' | 'performance' | 'page' | 'security' | 'runtime';
@@ -14,7 +15,8 @@ export interface LogEntry {
 export declare class DaisyLogger {
     private writeStream;
     private logFile;
-    constructor(logFile: string);
+    private logLevel;
+    constructor(logFile: string, logLevel?: LogLevel);
     private writeInitialHeader;
     log(entry: LogEntry): void;
     private writeRawLine;
@@ -24,6 +26,12 @@ export declare class DaisyLogger {
     logPerformance(name: string, data: any): void;
     logPageEvent(eventType: string, data: any, url?: string): void;
     private mapConsoleLevel;
+    private shouldSkipLog;
+    private filterConsoleArguments;
+    private filterStackTrace;
+    private filterHeaders;
+    private filterRequestBody;
+    private filterResponseBody;
     close(): void;
 }
 //# sourceMappingURL=logger.d.ts.map

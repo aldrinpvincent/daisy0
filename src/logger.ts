@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export type LogLevel = 'minimal' | 'standard' | 'verbose';
+
 export interface LogEntry {
   timestamp: string;
   type: 'console' | 'network' | 'error' | 'performance' | 'page' | 'security' | 'runtime';
@@ -18,9 +20,11 @@ export interface LogEntry {
 export class DaisyLogger {
   private writeStream: fs.WriteStream;
   private logFile: string;
+  private logLevel: LogLevel;
 
-  constructor(logFile: string) {
+  constructor(logFile: string, logLevel: LogLevel = 'standard') {
     this.logFile = logFile;
+    this.logLevel = logLevel;
     this.writeStream = fs.createWriteStream(logFile, { flags: 'w' });
     
     // Write initial header for LLM readability
@@ -32,12 +36,18 @@ export class DaisyLogger {
       daisy_session_start: new Date().toISOString(),
       format: "structured_json_logs",
       description: "Real-time Chrome DevTools Protocol debugging data",
+      log_level: this.logLevel,
+      filtering: {
+        minimal: "Only errors, warnings, and critical network requests",
+        standard: "Essential debugging info without verbose metadata",
+        verbose: "Full details including headers, certificates, and stack traces"
+      },
       log_structure: {
         timestamp: "ISO 8601 timestamp",
         type: "Event category (console, network, error, performance, page, security, runtime)",
         level: "Log level (info, warn, error, debug)",
         source: "Event source/origin",
-        data: "Raw event data from DevTools Protocol",
+        data: "Filtered event data from DevTools Protocol",
         context: "Additional contextual information for debugging"
       }
     };
@@ -55,6 +65,11 @@ export class DaisyLogger {
   }
 
   logConsole(level: string, text: string, args?: any[], stackTrace?: any, url?: string) {
+    // Filter console output based on log level
+    if (this.shouldSkipLog('console', this.mapConsoleLevel(level))) {
+      return;
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'console',
@@ -62,8 +77,8 @@ export class DaisyLogger {
       source: 'browser_console',
       data: {
         message: text,
-        arguments: args,
-        stackTrace: stackTrace
+        arguments: this.filterConsoleArguments(args),
+        stackTrace: this.filterStackTrace(stackTrace)
       },
       context: {
         url: url
@@ -72,6 +87,11 @@ export class DaisyLogger {
   }
 
   logNetwork(method: string, url: string, statusCode: number, headers: any, requestData?: any, responseData?: any) {
+    // Filter network requests based on log level
+    if (this.shouldSkipLog('network', statusCode >= 400 ? 'error' : 'info')) {
+      return;
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'network',
@@ -81,12 +101,12 @@ export class DaisyLogger {
         request: {
           method,
           url,
-          headers,
-          body: requestData
+          headers: this.filterHeaders(headers),
+          body: this.filterRequestBody(requestData)
         },
         response: {
           statusCode,
-          body: responseData
+          body: this.filterResponseBody(responseData)
         }
       },
       context: {
@@ -155,6 +175,130 @@ export class DaisyLogger {
       default:
         return 'info';
     }
+  }
+
+  // Filtering methods based on log level
+  private shouldSkipLog(logType: string, level: string): boolean {
+    if (this.logLevel === 'verbose') return false;
+    
+    if (this.logLevel === 'minimal') {
+      // Only show errors and warnings
+      return !(level === 'error' || level === 'warn');
+    }
+    
+    // Standard level - skip debug logs and non-essential info logs
+    if (level === 'debug') return true;
+    
+    return false;
+  }
+
+  private filterConsoleArguments(args?: any[]): any[] {
+    if (!args || this.logLevel === 'verbose') return args || [];
+    
+    return args.map(arg => {
+      if (typeof arg === 'object' && arg !== null) {
+        // Simplify object previews
+        if (this.logLevel === 'minimal') {
+          return { type: arg.type, value: arg.value || '[Object]' };
+        }
+        // Standard level - keep essential object info
+        return {
+          type: arg.type,
+          value: arg.value,
+          className: arg.className,
+          description: arg.description
+        };
+      }
+      return arg;
+    });
+  }
+
+  private filterStackTrace(stackTrace?: any): any {
+    if (!stackTrace || this.logLevel === 'verbose') return stackTrace;
+    
+    if (this.logLevel === 'minimal') return undefined;
+    
+    // Standard level - keep only essential stack frames (first 3)
+    if (stackTrace.callFrames) {
+      return {
+        callFrames: stackTrace.callFrames.slice(0, 3).map((frame: any) => ({
+          functionName: frame.functionName,
+          url: frame.url,
+          lineNumber: frame.lineNumber,
+          columnNumber: frame.columnNumber
+        }))
+      };
+    }
+    
+    return stackTrace;
+  }
+
+  private filterHeaders(headers: any): any {
+    if (!headers || this.logLevel === 'verbose') return headers;
+    
+    if (this.logLevel === 'minimal') {
+      // Only keep essential headers
+      const essentialHeaders: any = {};
+      const keepHeaders = ['content-type', 'authorization', 'x-api-key', 'user-agent'];
+      
+      for (const key of keepHeaders) {
+        if (headers[key.toLowerCase()]) {
+          essentialHeaders[key] = headers[key.toLowerCase()];
+        }
+      }
+      return essentialHeaders;
+    }
+    
+    // Standard level - remove verbose headers but keep useful ones
+    const filteredHeaders: any = {};
+    const skipHeaders = [
+      'cf-ray', 'cf-cache-status', 'reporting-endpoints', 'nel', 'report-to',
+      'x-ratelimit-', 'alt-svc', 'via', 'x-powered-by', 'server'
+    ];
+    
+    for (const [key, value] of Object.entries(headers)) {
+      const shouldSkip = skipHeaders.some(skip => key.toLowerCase().includes(skip));
+      if (!shouldSkip) {
+        filteredHeaders[key] = value;
+      }
+    }
+    
+    return filteredHeaders;
+  }
+
+  private filterRequestBody(body?: any): any {
+    if (!body || this.logLevel === 'verbose') return body;
+    
+    if (this.logLevel === 'minimal') return '[Request Body]';
+    
+    // Standard level - truncate large bodies
+    if (typeof body === 'string' && body.length > 1000) {
+      return body.substring(0, 1000) + '... [truncated]';
+    }
+    
+    return body;
+  }
+
+  private filterResponseBody(responseData?: any): any {
+    if (!responseData || this.logLevel === 'verbose') return responseData;
+    
+    // Remove verbose response data that's not useful for debugging
+    const filtered: any = {};
+    
+    if (responseData.url) filtered.url = responseData.url;
+    if (responseData.status) filtered.status = responseData.status;
+    if (responseData.statusText) filtered.statusText = responseData.statusText;
+    if (responseData.mimeType) filtered.mimeType = responseData.mimeType;
+    
+    // Remove timing, security details, and other verbose data
+    if (this.logLevel === 'standard') {
+      if (responseData.headers) {
+        filtered.headers = this.filterHeaders(responseData.headers);
+      }
+    }
+    
+    // Skip all the verbose timing, security, certificate data
+    return filtered;
   }
 
   close() {
