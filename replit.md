@@ -1,6 +1,6 @@
 # Overview
 
-Daisy is a command-line debugging tool that streams browser debugging data via the Chrome DevTools Protocol. It launches a headless Chrome instance with remote debugging enabled, monitors various browser events (console logs, network requests, errors, performance metrics), and streams this debugging data to structured log files. The tool is designed to help developers debug applications by providing comprehensive real-time insights into browser behavior during script execution.
+Daisy is a command-line debugging tool that streams browser debugging data via the Chrome DevTools Protocol. **Currently optimized for local debugging environments.** It launches a headless Chrome instance with remote debugging enabled, monitors various browser events (console logs, network requests, errors, performance metrics), and streams this debugging data to structured log files. The tool is designed to help developers debug applications by providing comprehensive real-time insights into browser behavior during script execution.
 
 ## Usage
 
@@ -10,11 +10,17 @@ To use daisy in your frontend application:
 # Build the CLI tool
 npm run build
 
-# Run daisy with your script
+# Run daisy with your script (default: standard log level)
 node dist/index.js --script "npm run dev"
 
-# Or with custom options
-node dist/index.js --script "yarn start" --port 9223 --log-file custom-debug.log
+# With minimal logging (errors/warnings only)
+node dist/index.js --script "npm run dev" --log-level minimal --log-file minimal-debug.log
+
+# With full verbose logging
+node dist/index.js --script "npm run dev" --log-level verbose --log-file verbose-debug.log
+
+# With custom options
+node dist/index.js --script "yarn start" --port 9223 --log-file custom-debug.log --log-level standard
 ```
 
 The tool will create a structured JSON log file containing all browser debugging data in real-time, formatted for easy analysis by LLMs and debugging tools.
@@ -73,6 +79,19 @@ Daisy follows a modular, event-driven architecture with clear separation of conc
 - Strict type checking enabled for reliability
 - Source maps and declarations generated for debugging
 - Output directory separation (src/ → dist/)
+
+# Recent Improvements
+
+## Log Filtering System
+- Added configurable verbosity levels: minimal, standard, verbose
+- **minimal**: Only errors, warnings, and critical network requests
+- **standard**: Essential debugging info without verbose metadata (SSL certs, extensive headers)
+- **verbose**: Full details including headers, certificates, and stack traces
+- Console logs are cleanly captured with source location and appropriate stack traces
+- Network requests filter out timing data, certificates, and verbose headers
+
+## Security Note
+For production use, consider implementing credential redaction for sensitive headers (Authorization, API keys, tokens) that are currently preserved for local debugging convenience.
 
 # External Dependencies
 
