@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daisy Test Application</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 1.3em;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .success { background: linear-gradient(45deg, #00b894, #00cec9); }
+        .warning { background: linear-gradient(45deg, #fdcb6e, #e17055); }
+        .error { background: linear-gradient(45deg, #d63031, #74b9ff); }
+        
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border-left: 4px solid #00b894;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log-info { background: rgba(116, 185, 255, 0.2); }
+        .log-warn { background: rgba(253, 203, 110, 0.2); }
+        .log-error { background: rgba(214, 48, 49, 0.2); }
+        
+        input[type="text"] {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .status {
+            text-align: center;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: rgba(0, 184, 148, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌼 Daisy Test Application</h1>
+        <div class="status" id="status">Ready to generate debugging events!</div>
+        
+        <div class="test-section">
+            <h3>📝 Console Logging Tests</h3>
+            <button onclick="testConsoleInfo()" class="success">Info Log</button>
+            <button onclick="testConsoleWarn()" class="warning">Warning Log</button>
+            <button onclick="testConsoleError()" class="error">Error Log</button>
+            <button onclick="testConsoleGroup()">Grouped Logs</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🌐 Network Request Tests</h3>
+            <button onclick="testSuccessRequest()" class="success">Success Request</button>
+            <button onclick="testSlowRequest()" class="warning">Slow Request</button>
+            <button onclick="testErrorRequest()" class="error">Error Request</button>
+            <button onclick="testNotFoundRequest()" class="error">404 Request</button>
+            <button onclick="testPostRequest()">POST Request</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>💥 JavaScript Error Tests</h3>
+            <button onclick="testReferenceError()" class="error">Reference Error</button>
+            <button onclick="testTypeError()" class="error">Type Error</button>
+            <button onclick="testCustomError()" class="error">Custom Error</button>
+            <button onclick="testUnhandledPromise()" class="error">Promise Rejection</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚡ Performance Tests</h3>
+            <button onclick="testDOMManipulation()">DOM Manipulation</button>
+            <button onclick="testLargeDataProcessing()">Data Processing</button>
+            <button onclick="testMemoryUsage()">Memory Test</button>
+            <button onclick="testTimingAPI()">Performance Timing</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 Custom Tests</h3>
+            <input type="text" id="customMessage" placeholder="Enter custom message">
+            <button onclick="testCustomLog()">Custom Log</button>
+            <button onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
