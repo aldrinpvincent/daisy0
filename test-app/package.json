@@ -1,0 +1,13 @@
+{
+  "name": "daisy-test-app",
+  "version": "1.0.0",
+  "description": "Interactive test app for generating debugging data for daisy CLI tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["testing", "debugging", "devtools", "daisy"],
+  "author": "",
+  "license": "ISC"
+}
