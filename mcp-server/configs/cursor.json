@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "daisy-logs": {
+      "command": "node",
+      "args": ["./mcp-server/dist/index.js", "--auto-detect", "--watch"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  },
+  "modelContextProtocol": {
+    "enabled": true,
+    "servers": ["daisy-logs"]
+  }
+}

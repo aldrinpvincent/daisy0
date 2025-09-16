@@ -25,6 +25,77 @@ node dist/index.js --script "yarn start" --port 9223 --log-file custom-debug.log
 
 The tool will create a structured JSON log file containing all browser debugging data in real-time, formatted for easy analysis by LLMs and debugging tools.
 
+## MCP Server for AI Assistants
+
+Daisy includes a complete **Model Context Protocol (MCP) server** that makes debugging logs accessible to AI coding assistants like GitHub Copilot, Claude, Cursor, and Windsurf.
+
+### Quick Setup
+
+```bash
+# Install and start the MCP server
+cd mcp-server
+npm install && npm run build
+
+# Auto-detect daisy logs and start MCP server
+npx daisy-mcp-server --auto-detect --watch
+```
+
+### AI Assistant Integration
+
+The MCP server provides intelligent tools for log analysis:
+
+- **`analyze_logs`** - Parse and categorize entries by type/severity with filtering
+- **`find_errors`** - Extract JavaScript errors, network failures, console errors with context  
+- **`performance_insights`** - Analyze performance metrics, slow requests, memory usage patterns
+- **`suggest_fixes`** - Provide debugging suggestions with code examples based on log patterns
+- **`get_log_summary`** - Generate comprehensive debugging session summaries
+
+### Configuration Examples
+
+**Claude Desktop** (`~/.claude/config.json`):
+```json
+{
+  "mcpServers": {
+    "daisy-mcp-server": {
+      "command": "npx",
+      "args": ["daisy-mcp-server", "--auto-detect", "--watch"]
+    }
+  }
+}
+```
+
+**VS Code + Copilot** (settings.json):
+```json
+{
+  "mcp.servers": {
+    "daisy-debugging": {
+      "command": "npx", 
+      "args": ["daisy-mcp-server", "--auto-detect", "--watch"]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor-settings/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "daisy-logs": {
+      "command": "npx",
+      "args": ["daisy-mcp-server", "--auto-detect", "--watch"]
+    }
+  }
+}
+```
+
+Once configured, you can ask your AI assistant:
+- *"Analyze my daisy logs for errors and performance issues"*
+- *"What JavaScript errors are occurring and how can I fix them?"*
+- *"Generate a summary of this debugging session"*
+- *"Find network failures and suggest improvements"*
+
+See `mcp-server/docs/setup-guide.md` for complete configuration instructions.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -117,6 +188,7 @@ For production use, consider implementing credential redaction for sensitive hea
 - Node.js runtime environment (ES2020 compatible)
 - Chrome/Chromium browser installation for headless operation
 - File system write access for log output
+- For MCP server: AI coding assistant with MCP support (Claude, VS Code + Copilot, Cursor, Windsurf)
 
 ## Protocol Integration
 - **Chrome DevTools Protocol (CDP)**: Primary interface for browser debugging data

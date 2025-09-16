@@ -1,0 +1,44 @@
+{
+  "name": "daisy-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for daisy debugging logs - provides AI coding assistants with structured access to browser debugging data",
+  "main": "dist/index.js",
+  "bin": {
+    "daisy-mcp": "./dist/index.js",
+    "daisy-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol", 
+    "debugging",
+    "devtools",
+    "chrome",
+    "ai-assistant",
+    "logs"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@types/node": "^24.5.0",
+    "chokidar": "^4.0.3",
+    "commander": "^14.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  }
+}

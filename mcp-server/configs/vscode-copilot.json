@@ -1,0 +1,21 @@
+{
+  "name": "Daisy Debugging Assistant",
+  "description": "MCP server for daisy debugging logs - provides AI assistants with access to browser debugging data",
+  "server": {
+    "command": "npx",
+    "args": ["daisy-mcp-server", "--auto-detect", "--watch"],
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false
+  },
+  "securityPolicy": {
+    "allowedCommands": ["npx"],
+    "allowedFileAccess": ["read"],
+    "allowedNetworkAccess": false
+  }
+}

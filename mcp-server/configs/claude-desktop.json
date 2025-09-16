@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "daisy-mcp-server": {
+      "command": "npx",
+      "args": ["daisy-mcp-server"],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

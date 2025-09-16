@@ -1,0 +1,40 @@
+{
+  "servers": {
+    "daisy-debugging": {
+      "name": "Daisy Debugging Assistant",
+      "description": "Provides access to daisy debugging logs for intelligent error analysis and performance insights",
+      "transport": {
+        "type": "stdio"
+      },
+      "command": {
+        "program": "npx",
+        "arguments": [
+          "daisy-mcp-server",
+          "--auto-detect",
+          "--watch",
+          "--log-file", "${env:DAISY_LOG_FILE:-debug.log}",
+          "--screenshots-dir", "${env:DAISY_SCREENSHOTS_DIR:-screenshots}"
+        ],
+        "workingDirectory": "${workspaceRoot}"
+      },
+      "capabilities": {
+        "tools": {
+          "analyze_logs": "Parse and categorize log entries by type and severity",
+          "find_errors": "Extract and analyze JavaScript errors, network failures, and console errors",
+          "performance_insights": "Analyze performance metrics and identify bottlenecks",
+          "suggest_fixes": "Provide debugging suggestions and potential fixes",
+          "get_log_summary": "Generate comprehensive log session summary"
+        },
+        "resources": {
+          "logs": "Access to structured log data",
+          "screenshots": "Debugging screenshots when available"
+        }
+      },
+      "security": {
+        "allowFileAccess": "readOnly",
+        "allowNetworkAccess": false,
+        "sandbox": true
+      }
+    }
+  }
+}
