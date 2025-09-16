@@ -13,8 +13,32 @@ export class DevToolsMonitor {
   }
 
   async connect(): Promise<void> {
+    // Retry connection with backoff
+    let retries = 5;
+    let lastError;
+    
+    while (retries > 0) {
+      try {
+        this.client = await CDP({ port: this.port });
+        break;
+      } catch (error: any) {
+        lastError = error;
+        if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+          retries--;
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
+    
+    if (!this.client) {
+      throw lastError;
+    }
+
     try {
-      this.client = await CDP({ port: this.port });
       const { Runtime, Network, Log, Performance, Page, Security, Debugger } = this.client;
 
       // Enable all domains for comprehensive monitoring

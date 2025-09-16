@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daisy Test App - Interactive Debug Playground</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a8b;
+        }
+        .error-btn {
+            background-color: #e74c3c;
+        }
+        .error-btn:hover {
+            background-color: #c0392b;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #log-output {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌼 Daisy Test App - Debug Data Generator</h1>
+        <p>This interactive app generates various types of debugging events for daisy to capture.</p>
+        
+        <div class="section">
+            <h3>📝 Console Logging</h3>
+            <button onclick="logInfo()">Log Info</button>
+            <button onclick="logWarning()">Log Warning</button>
+            <button onclick="logError()" class="error-btn">Log Error</button>
+            <button onclick="logDebug()">Log Debug</button>
+            <div id="log-output"></div>
+        </div>
+
+        <div class="section">
+            <h3>🌐 Network Requests</h3>
+            <button onclick="makeSuccessRequest()">Successful API Call</button>
+            <button onclick="make404Request()" class="error-btn">404 Request</button>
+            <button onclick="makeSlowRequest()">Slow Request (3s)</button>
+            <button onclick="makePostRequest()">POST Request</button>
+            <div id="network-status"></div>
+        </div>
+
+        <div class="section">
+            <h3>❌ JavaScript Errors</h3>
+            <button onclick="throwError()" class="error-btn">Throw Error</button>
+            <button onclick="undefinedError()" class="error-btn">Undefined Variable</button>
+            <button onclick="asyncError()" class="error-btn">Async Error</button>
+        </div>
+
+        <div class="section">
+            <h3>🎯 DOM Interactions</h3>
+            <button onclick="addElement()">Add Element</button>
+            <button onclick="modifyElement()">Modify Element</button>
+            <button onclick="removeElement()">Remove Element</button>
+            <div id="dynamic-content"></div>
+        </div>
+
+        <div class="section">
+            <h3>📊 Performance Testing</h3>
+            <button onclick="heavyComputation()">Heavy Computation</button>
+            <button onclick="memoryTest()">Memory Test</button>
+            <button onclick="performanceMarker()">Performance Marker</button>
+        </div>
+
+        <div class="section">
+            <h3>📝 Form Testing</h3>
+            <form id="test-form" onsubmit="handleFormSubmit(event)">
+                <input type="text" id="name" placeholder="Your name" required>
+                <input type="email" id="email" placeholder="Your email" required>
+                <textarea id="message" placeholder="Your message" rows="3"></textarea>
+                <button type="submit">Submit Form</button>
+            </form>
+            <div id="form-result"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

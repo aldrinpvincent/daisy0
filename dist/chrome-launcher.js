@@ -41,12 +41,14 @@ class ChromeLauncher {
     }
     async launch() {
         this.chrome = await chromeLauncher.launch({
+            port: this.port,
             chromeFlags: [
                 '--headless',
                 '--disable-gpu',
                 '--disable-web-security',
                 '--disable-features=VizDisplayCompositor',
-                `--remote-debugging-port=${this.port}`,
+                '--remote-debugging-address=127.0.0.1',
+                '--no-sandbox',
                 '--no-first-run',
                 '--no-default-browser-check',
                 '--disable-default-apps',

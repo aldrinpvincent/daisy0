@@ -40,7 +40,40 @@ const chrome_launcher_1 = require("./chrome-launcher");
 const devtools_monitor_1 = require("./devtools-monitor");
 const script_runner_1 = require("./script-runner");
 const path = __importStar(require("path"));
+const http = __importStar(require("http"));
 const program = new commander_1.Command();
+async function waitForDevTools(port) {
+    let retries = 10;
+    while (retries > 0) {
+        try {
+            await new Promise((resolve, reject) => {
+                const req = http.get(`http://127.0.0.1:${port}/json/version`, (res) => {
+                    if (res.statusCode === 200) {
+                        resolve();
+                    }
+                    else {
+                        reject(new Error(`DevTools not ready: ${res.statusCode}`));
+                    }
+                });
+                req.on('error', reject);
+                req.setTimeout(1000, () => {
+                    req.destroy();
+                    reject(new Error('Request timeout'));
+                });
+            });
+            return;
+        }
+        catch (error) {
+            retries--;
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            else {
+                throw new Error(`DevTools not ready after waiting: ${error}`);
+            }
+        }
+    }
+}
 program
     .name('daisy')
     .description('A CLI tool for streaming browser debugging data via Chrome DevTools Protocol')
@@ -65,9 +98,13 @@ program
         const scriptRunner = new script_runner_1.ScriptRunner();
         // Launch Chrome with DevTools enabled
         const chrome = await chromeLauncher.launch();
-        console.log(`🌐 Chrome launched on port ${options.port}`);
+        const actualPort = chrome.port ?? chromeLauncher.getPort();
+        console.log(`🌐 Chrome launched on port ${actualPort}`);
+        // Wait for DevTools to be ready
+        await waitForDevTools(actualPort);
+        console.log(`🔗 DevTools ready on port ${actualPort}`);
         // Initialize DevTools monitoring
-        const devToolsMonitor = new devtools_monitor_1.DevToolsMonitor(parseInt(options.port), logger);
+        const devToolsMonitor = new devtools_monitor_1.DevToolsMonitor(actualPort, logger);
         await devToolsMonitor.connect();
         console.log(`🔍 DevTools monitoring enabled`);
         // Start the script

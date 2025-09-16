@@ -7,8 +7,39 @@ import { DevToolsMonitor } from './devtools-monitor';
 import { ScriptRunner } from './script-runner';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as http from 'http';
 
 const program = new Command();
+
+async function waitForDevTools(port: number): Promise<void> {
+  let retries = 10;
+  while (retries > 0) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const req = http.get(`http://127.0.0.1:${port}/json/version`, (res) => {
+          if (res.statusCode === 200) {
+            resolve();
+          } else {
+            reject(new Error(`DevTools not ready: ${res.statusCode}`));
+          }
+        });
+        req.on('error', reject);
+        req.setTimeout(1000, () => {
+          req.destroy();
+          reject(new Error('Request timeout'));
+        });
+      });
+      return;
+    } catch (error) {
+      retries--;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } else {
+        throw new Error(`DevTools not ready after waiting: ${error}`);
+      }
+    }
+  }
+}
 
 program
   .name('daisy')
@@ -39,10 +70,15 @@ program
       
       // Launch Chrome with DevTools enabled
       const chrome = await chromeLauncher.launch();
-      console.log(`🌐 Chrome launched on port ${options.port}`);
+      const actualPort = chrome.port ?? chromeLauncher.getPort();
+      console.log(`🌐 Chrome launched on port ${actualPort}`);
+      
+      // Wait for DevTools to be ready
+      await waitForDevTools(actualPort);
+      console.log(`🔗 DevTools ready on port ${actualPort}`);
       
       // Initialize DevTools monitoring
-      const devToolsMonitor = new DevToolsMonitor(parseInt(options.port), logger);
+      const devToolsMonitor = new DevToolsMonitor(actualPort, logger);
       await devToolsMonitor.connect();
       console.log(`🔍 DevTools monitoring enabled`);
       

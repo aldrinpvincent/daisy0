@@ -18,6 +18,10 @@ author = "agent"
 task = "workflow.run"
 args = "Build"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "TestApp"
+
 [[workflows.workflow]]
 name = "Build"
 author = "agent"
@@ -28,3 +32,23 @@ args = "npm run build"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "TestApp"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd test-app && node server.js"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 34021
+externalPort = 3000

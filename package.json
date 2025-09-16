@@ -25,6 +25,7 @@
     "chrome-launcher": "^1.2.0",
     "chrome-remote-interface": "^0.33.3",
     "commander": "^14.0.1",
+    "puppeteer": "^24.21.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

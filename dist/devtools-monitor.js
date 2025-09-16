@@ -12,8 +12,30 @@ class DevToolsMonitor {
         this.logger = logger;
     }
     async connect() {
+        // Retry connection with backoff
+        let retries = 5;
+        let lastError;
+        while (retries > 0) {
+            try {
+                this.client = await (0, chrome_remote_interface_1.default)({ port: this.port });
+                break;
+            }
+            catch (error) {
+                lastError = error;
+                if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+                    retries--;
+                    if (retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        continue;
+                    }
+                }
+                throw error;
+            }
+        }
+        if (!this.client) {
+            throw lastError;
+        }
         try {
-            this.client = await (0, chrome_remote_interface_1.default)({ port: this.port });
             const { Runtime, Network, Log, Performance, Page, Security, Debugger } = this.client;
             // Enable all domains for comprehensive monitoring
             await Promise.all([
