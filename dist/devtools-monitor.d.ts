@@ -4,6 +4,7 @@ export declare class DevToolsMonitor {
     private port;
     private logger;
     private connected;
+    private pendingRequests;
     constructor(port: number, logger: DaisyLogger);
     connect(): Promise<void>;
     disconnect(): Promise<void>;

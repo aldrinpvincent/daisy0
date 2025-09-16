@@ -105,28 +105,34 @@ class DaisyLogger {
         if (this.shouldSkipLog('network', statusCode >= 400 ? 'error' : 'info')) {
             return;
         }
+        // Create clean network log structure
+        const networkData = {
+            method,
+            url,
+            status: statusCode
+        };
+        // Add essential headers only (content-type mainly)
+        const essentialHeaders = this.getEssentialHeaders(headers);
+        if (Object.keys(essentialHeaders).length > 0) {
+            networkData.headers = essentialHeaders;
+        }
+        // Add request body if present
+        if (requestData) {
+            networkData.requestBody = this.filterRequestBody(requestData);
+        }
+        // Add response body/data if present
+        if (responseData) {
+            const responseBody = this.extractResponseBody(responseData);
+            if (responseBody) {
+                networkData.responseBody = responseBody;
+            }
+        }
         this.log({
             timestamp: new Date().toISOString(),
             type: 'network',
             level: statusCode >= 400 ? 'error' : 'info',
             source: 'network_request',
-            data: {
-                request: {
-                    method,
-                    url,
-                    headers: this.filterHeaders(headers),
-                    body: this.filterRequestBody(requestData)
-                },
-                response: {
-                    statusCode,
-                    body: this.filterResponseBody(responseData)
-                }
-            },
-            context: {
-                url,
-                method,
-                statusCode
-            }
+            data: networkData
         });
     }
     logError(error, source = 'unknown', stackTrace) {
@@ -146,6 +152,10 @@ class DaisyLogger {
         });
     }
     logPerformance(name, data) {
+        // Apply log level filtering to performance events
+        if (this.shouldSkipLog('performance', 'info')) {
+            return;
+        }
         this.log({
             timestamp: new Date().toISOString(),
             type: 'performance',
@@ -158,6 +168,10 @@ class DaisyLogger {
         });
     }
     logPageEvent(eventType, data, url) {
+        // Apply log level filtering to page events
+        if (this.shouldSkipLog('page', 'info')) {
+            return;
+        }
         this.log({
             timestamp: new Date().toISOString(),
             type: 'page',
@@ -190,12 +204,26 @@ class DaisyLogger {
         if (this.logLevel === 'verbose')
             return false;
         if (this.logLevel === 'minimal') {
-            // Only show errors and warnings
-            return !(level === 'error' || level === 'warn');
+            // For minimal: only show errors and warnings
+            if (!(level === 'error' || level === 'warn')) {
+                return true;
+            }
+            // Additionally skip non-critical event types in minimal mode
+            const skipTypesMinimal = ['performance', 'page', 'security'];
+            if (skipTypesMinimal.includes(logType)) {
+                return true;
+            }
         }
-        // Standard level - skip debug logs and non-essential info logs
+        // Standard level - skip debug logs and non-essential event types
         if (level === 'debug')
             return true;
+        // In standard mode, skip verbose performance/page events unless they're errors
+        if (this.logLevel === 'standard' && level === 'info') {
+            const skipTypesStandard = ['performance'];
+            if (skipTypesStandard.includes(logType)) {
+                return true;
+            }
+        }
         return false;
     }
     filterConsoleArguments(args) {
@@ -274,6 +302,28 @@ class DaisyLogger {
             return body.substring(0, 1000) + '... [truncated]';
         }
         return body;
+    }
+    getEssentialHeaders(headers) {
+        if (!headers)
+            return {};
+        // Only keep the most essential headers for debugging
+        const essentialHeaders = {};
+        const keepHeaders = ['content-type', 'content-length'];
+        for (const [key, value] of Object.entries(headers)) {
+            if (keepHeaders.includes(key.toLowerCase())) {
+                essentialHeaders[key.toLowerCase()] = value;
+            }
+        }
+        return essentialHeaders;
+    }
+    extractResponseBody(responseData) {
+        if (!responseData)
+            return null;
+        // If responseData is already the body content (from DevTools), return it
+        if (typeof responseData === 'string' || typeof responseData === 'object') {
+            return responseData;
+        }
+        return null;
     }
     filterResponseBody(responseData) {
         if (!responseData || this.logLevel === 'verbose')

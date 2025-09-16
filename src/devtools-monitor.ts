@@ -6,6 +6,7 @@ export class DevToolsMonitor {
   private port: number;
   private logger: DaisyLogger;
   private connected: boolean = false;
+  private pendingRequests = new Map<string, any>(); // Track requests by requestId
 
   constructor(port: number, logger: DaisyLogger) {
     this.port = port;
@@ -92,26 +93,64 @@ export class DevToolsMonitor {
         );
       });
 
-      // Network request events
+      // Network request events - track requests and responses
       Network.requestWillBeSent((params: any) => {
-        this.logger.logNetwork(
-          params.request.method,
-          params.request.url,
-          0, // Status not known yet
-          params.request.headers,
-          params.request.postData
-        );
+        // Store request info for later when response comes
+        this.pendingRequests.set(params.requestId, {
+          method: params.request.method,
+          url: params.request.url,
+          headers: params.request.headers,
+          postData: params.request.postData
+        });
       });
 
-      Network.responseReceived((params: any) => {
-        this.logger.logNetwork(
-          params.response.url.includes('?') ? 'GET' : 'UNKNOWN',
-          params.response.url,
-          params.response.status,
-          params.response.headers,
-          undefined,
-          params.response
-        );
+      Network.responseReceived(async (params: any) => {
+        const requestData = this.pendingRequests.get(params.requestId);
+        
+        try {
+          // Get the actual response body content
+          let responseBody = null;
+          try {
+            const responseBodyResult = await Network.getResponseBody({
+              requestId: params.requestId
+            });
+            responseBody = responseBodyResult.body;
+            
+            // Try to parse JSON responses
+            if (params.response.mimeType === 'application/json' && responseBody) {
+              try {
+                responseBody = JSON.parse(responseBody);
+              } catch (e) {
+                // Keep as string if not valid JSON
+              }
+            }
+          } catch (e) {
+            // Response body not available, skip
+          }
+
+          // Log the complete request/response
+          this.logger.logNetwork(
+            requestData?.method || 'UNKNOWN',
+            params.response.url,
+            params.response.status,
+            params.response.headers,
+            requestData?.postData,
+            responseBody
+          );
+        } catch (error) {
+          // Fallback to basic logging if something fails
+          this.logger.logNetwork(
+            requestData?.method || 'UNKNOWN',
+            params.response.url,
+            params.response.status,
+            params.response.headers,
+            requestData?.postData,
+            null
+          );
+        }
+        
+        // Clean up tracked request
+        this.pendingRequests.delete(params.requestId);
       });
 
       Network.loadingFailed((params: any) => {

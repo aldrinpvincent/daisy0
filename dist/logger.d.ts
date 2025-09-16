@@ -31,6 +31,8 @@ export declare class DaisyLogger {
     private filterStackTrace;
     private filterHeaders;
     private filterRequestBody;
+    private getEssentialHeaders;
+    private extractResponseBody;
     private filterResponseBody;
     close(): void;
 }

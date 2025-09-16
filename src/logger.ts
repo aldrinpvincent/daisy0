@@ -103,28 +103,38 @@ export class DaisyLogger {
       return;
     }
 
+    // Create clean network log structure
+    const networkData: any = {
+      method,
+      url,
+      status: statusCode
+    };
+
+    // Add essential headers only (content-type mainly)
+    const essentialHeaders = this.getEssentialHeaders(headers);
+    if (Object.keys(essentialHeaders).length > 0) {
+      networkData.headers = essentialHeaders;
+    }
+
+    // Add request body if present
+    if (requestData) {
+      networkData.requestBody = this.filterRequestBody(requestData);
+    }
+
+    // Add response body/data if present
+    if (responseData) {
+      const responseBody = this.extractResponseBody(responseData);
+      if (responseBody) {
+        networkData.responseBody = responseBody;
+      }
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'network',
       level: statusCode >= 400 ? 'error' : 'info',
       source: 'network_request',
-      data: {
-        request: {
-          method,
-          url,
-          headers: this.filterHeaders(headers),
-          body: this.filterRequestBody(requestData)
-        },
-        response: {
-          statusCode,
-          body: this.filterResponseBody(responseData)
-        }
-      },
-      context: {
-        url,
-        method,
-        statusCode
-      }
+      data: networkData
     });
   }
 
@@ -313,6 +323,33 @@ export class DaisyLogger {
     }
     
     return body;
+  }
+
+  private getEssentialHeaders(headers: any): any {
+    if (!headers) return {};
+    
+    // Only keep the most essential headers for debugging
+    const essentialHeaders: any = {};
+    const keepHeaders = ['content-type', 'content-length'];
+    
+    for (const [key, value] of Object.entries(headers)) {
+      if (keepHeaders.includes(key.toLowerCase())) {
+        essentialHeaders[key.toLowerCase()] = value;
+      }
+    }
+    
+    return essentialHeaders;
+  }
+
+  private extractResponseBody(responseData?: any): any {
+    if (!responseData) return null;
+    
+    // If responseData is already the body content (from DevTools), return it
+    if (typeof responseData === 'string' || typeof responseData === 'object') {
+      return responseData;
+    }
+    
+    return null;
   }
 
   private filterResponseBody(responseData?: any): any {
