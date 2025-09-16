@@ -77,16 +77,24 @@ class DaisyLogger {
         if (this.shouldSkipLog('console', this.mapConsoleLevel(level))) {
             return;
         }
+        // Create clean console log structure
+        const logData = {
+            message: text
+        };
+        // Add source location if available (from simplified args)
+        if (args && args.length > 0 && args[0].sourceLocation) {
+            logData.source = args[0].sourceLocation;
+        }
+        // Only add stack trace for errors and warnings in standard/verbose mode
+        if (['error', 'warn'].includes(this.mapConsoleLevel(level))) {
+            logData.stackTrace = this.filterStackTrace(stackTrace);
+        }
         this.log({
             timestamp: new Date().toISOString(),
             type: 'console',
             level: this.mapConsoleLevel(level),
             source: 'browser_console',
-            data: {
-                message: text,
-                arguments: this.filterConsoleArguments(args),
-                stackTrace: this.filterStackTrace(stackTrace)
-            },
+            data: logData,
             context: {
                 url: url
             }

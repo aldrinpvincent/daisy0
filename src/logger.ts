@@ -70,16 +70,27 @@ export class DaisyLogger {
       return;
     }
 
+    // Create clean console log structure
+    const logData: any = {
+      message: text
+    };
+
+    // Add source location if available (from simplified args)
+    if (args && args.length > 0 && args[0].sourceLocation) {
+      logData.source = args[0].sourceLocation;
+    }
+
+    // Only add stack trace for errors and warnings in standard/verbose mode
+    if (['error', 'warn'].includes(this.mapConsoleLevel(level))) {
+      logData.stackTrace = this.filterStackTrace(stackTrace);
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'console',
       level: this.mapConsoleLevel(level),
       source: 'browser_console',
-      data: {
-        message: text,
-        arguments: this.filterConsoleArguments(args),
-        stackTrace: this.filterStackTrace(stackTrace)
-      },
+      data: logData,
       context: {
         url: url
       }
@@ -135,6 +146,11 @@ export class DaisyLogger {
   }
 
   logPerformance(name: string, data: any) {
+    // Apply log level filtering to performance events
+    if (this.shouldSkipLog('performance', 'info')) {
+      return;
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'performance',
@@ -148,6 +164,11 @@ export class DaisyLogger {
   }
 
   logPageEvent(eventType: string, data: any, url?: string) {
+    // Apply log level filtering to page events
+    if (this.shouldSkipLog('page', 'info')) {
+      return;
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'page',
@@ -182,12 +203,27 @@ export class DaisyLogger {
     if (this.logLevel === 'verbose') return false;
     
     if (this.logLevel === 'minimal') {
-      // Only show errors and warnings
-      return !(level === 'error' || level === 'warn');
+      // For minimal: only show errors and warnings
+      if (!(level === 'error' || level === 'warn')) {
+        return true;
+      }
+      // Additionally skip non-critical event types in minimal mode
+      const skipTypesMinimal = ['performance', 'page', 'security'];
+      if (skipTypesMinimal.includes(logType)) {
+        return true;
+      }
     }
     
-    // Standard level - skip debug logs and non-essential info logs
+    // Standard level - skip debug logs and non-essential event types
     if (level === 'debug') return true;
+    
+    // In standard mode, skip verbose performance/page events unless they're errors
+    if (this.logLevel === 'standard' && level === 'info') {
+      const skipTypesStandard = ['performance'];
+      if (skipTypesStandard.includes(logType)) {
+        return true;
+      }
+    }
     
     return false;
   }

@@ -56,10 +56,25 @@ export class DevToolsMonitor {
 
       // Console events
       Runtime.consoleAPICalled((params: any) => {
+        // Extract clean message from console arguments
+        const message = params.args.map((arg: any) => {
+          if (arg.value !== undefined) return arg.value;
+          if (arg.description) return arg.description;
+          return `[${arg.type}]`;
+        }).join(' ');
+        
+        // Get the source location (file and line) from stack trace
+        let sourceLocation = '';
+        if (params.stackTrace && params.stackTrace.callFrames.length > 0) {
+          const frame = params.stackTrace.callFrames[0];
+          const fileName = frame.url ? frame.url.split('/').pop() : 'unknown';
+          sourceLocation = `${fileName}:${frame.lineNumber}`;
+        }
+        
         this.logger.logConsole(
           params.type,
-          params.args.map((arg: any) => arg.value).join(' '),
-          params.args,
+          message,
+          sourceLocation ? [{ sourceLocation }] : undefined,
           params.stackTrace
         );
       });
