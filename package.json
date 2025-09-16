@@ -22,9 +22,11 @@
   "dependencies": {
     "@types/chrome-remote-interface": "^0.31.14",
     "@types/node": "^24.5.0",
+    "chokidar": "^4.0.3",
     "chrome-launcher": "^1.2.0",
     "chrome-remote-interface": "^0.33.3",
     "commander": "^14.0.1",
+    "express": "^5.1.0",
     "puppeteer": "^24.21.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

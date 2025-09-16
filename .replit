@@ -20,7 +20,7 @@ args = "Build"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "TestApp"
+args = "WebViewer"
 
 [[workflows.workflow]]
 name = "Build"
@@ -34,12 +34,12 @@ args = "npm run build"
 outputType = "console"
 
 [[workflows.workflow]]
-name = "TestApp"
+name = "WebViewer"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd test-app && node server.js"
+args = "cd web-viewer && node server.js --log-file ../debug.log --port 5000"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -48,3 +48,7 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 38539
+externalPort = 3001

@@ -1,0 +1,21 @@
+{
+  "name": "daisy-web-viewer",
+  "version": "1.0.0",
+  "description": "Web interface for viewing daisy debugging logs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js --log-file ../debug.log --port 3000"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "chokidar": "^3.5.3",
+    "commander": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["daisy", "debugging", "chrome", "devtools", "logs"],
+  "author": "Daisy Debug Tool",
+  "license": "MIT"
+}

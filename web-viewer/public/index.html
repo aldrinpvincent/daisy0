@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌼 Daisy Debug Viewer</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌼</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">🌼 Daisy Debug Viewer</h1>
+                <div class="status-indicators">
+                    <div class="status-indicator" id="connection-status">
+                        <span class="status-dot connecting"></span>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                    <div class="stats-summary" id="stats-summary">
+                        <span class="stat-item">
+                            <span class="stat-value" id="total-logs">0</span>
+                            <span class="stat-label">logs</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Filters -->
+            <aside class="sidebar">
+                <div class="sidebar-content">
+                    <div class="filter-section">
+                        <h3 class="filter-title">🔍 Filters</h3>
+                        
+                        <!-- Search -->
+                        <div class="filter-group">
+                            <label for="search-input">Search</label>
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                placeholder="Search logs..."
+                                class="search-input"
+                            >
+                        </div>
+
+                        <!-- Type Filter -->
+                        <div class="filter-group">
+                            <label>Event Type</label>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" value="console" checked> 
+                                    <span class="type-badge type-console">Console</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="network" checked> 
+                                    <span class="type-badge type-network">Network</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="error" checked> 
+                                    <span class="type-badge type-error">Error</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="performance" checked> 
+                                    <span class="type-badge type-performance">Performance</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="page" checked> 
+                                    <span class="type-badge type-page">Page</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="security" checked> 
+                                    <span class="type-badge type-security">Security</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="runtime" checked> 
+                                    <span class="type-badge type-runtime">Runtime</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Level Filter -->
+                        <div class="filter-group">
+                            <label>Log Level</label>
+                            <div class="filter-options">
+                                <label class="filter-option">
+                                    <input type="checkbox" value="info" name="level" checked> 
+                                    <span class="level-badge level-info">Info</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="warn" name="level" checked> 
+                                    <span class="level-badge level-warn">Warn</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="error" name="level" checked> 
+                                    <span class="level-badge level-error">Error</span>
+                                </label>
+                                <label class="filter-option">
+                                    <input type="checkbox" value="debug" name="level" checked> 
+                                    <span class="level-badge level-debug">Debug</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="filter-actions">
+                            <button class="btn btn-primary" id="apply-filters">Apply Filters</button>
+                            <button class="btn btn-secondary" id="clear-filters">Clear All</button>
+                            <button class="btn btn-secondary" id="refresh-logs">Refresh</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center - Log List -->
+            <main class="log-list-container">
+                <div class="log-list-header">
+                    <h2 class="log-list-title">Debug Logs</h2>
+                    <div class="log-controls">
+                        <button class="btn btn-sm" id="auto-scroll-toggle">
+                            <span id="auto-scroll-text">🔄 Auto-scroll</span>
+                        </button>
+                        <select id="limit-select" class="limit-select">
+                            <option value="50">50 logs</option>
+                            <option value="100" selected>100 logs</option>
+                            <option value="250">250 logs</option>
+                            <option value="500">500 logs</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="log-list" id="log-list">
+                    <div class="loading-state" id="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading logs...</p>
+                    </div>
+                </div>
+
+                <div class="pagination-controls" id="pagination-controls" style="display: none;">
+                    <button class="btn btn-sm" id="load-more">Load More</button>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Detail View -->
+            <aside class="detail-panel" id="detail-panel">
+                <div class="detail-header">
+                    <h3 class="detail-title">Log Details</h3>
+                    <button class="btn btn-sm btn-close" id="close-detail">✕</button>
+                </div>
+                <div class="detail-content" id="detail-content">
+                    <div class="empty-state">
+                        <p>Select a log entry to view details</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Screenshot Modal -->
+    <div class="modal" id="screenshot-modal">
+        <div class="modal-backdrop" id="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Screenshot</h3>
+                <button class="btn btn-close" id="close-modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <img id="modal-screenshot" src="" alt="Screenshot" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Test Script -->
+    <script>
+        // Simple test to debug API connectivity
+        async function testAPI() {
+            console.log('Testing API connection...');
+            try {
+                const response = await fetch('/api/logs?limit=1');
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                const data = await response.json();
+                console.log('API Test Success - received data:', data);
+            } catch (error) {
+                console.error('API Test Error:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        // Test immediately when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, testing API...');
+            testAPI();
+        });
+    </script>
+    
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+</body>
+</html>
