@@ -5,8 +5,10 @@ export declare class DevToolsMonitor {
     private logger;
     private connected;
     private pendingRequests;
-    constructor(port: number, logger: DaisyLogger);
+    private screenshotDir;
+    constructor(port: number, logger: DaisyLogger, screenshotDir?: string);
     connect(): Promise<void>;
+    takeScreenshot(errorContext?: string): Promise<string | null>;
     disconnect(): Promise<void>;
     isConnected(): boolean;
 }

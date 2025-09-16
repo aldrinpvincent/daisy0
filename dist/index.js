@@ -111,10 +111,12 @@ program
         // Wait for DevTools to be ready
         await waitForDevTools(actualPort);
         console.log(`🔗 DevTools ready on port ${actualPort}`);
-        // Initialize DevTools monitoring
-        const devToolsMonitor = new devtools_monitor_1.DevToolsMonitor(actualPort, logger);
+        // Initialize DevTools monitoring with screenshot capability
+        const screenshotDir = path.resolve(process.cwd(), 'screenshots');
+        const devToolsMonitor = new devtools_monitor_1.DevToolsMonitor(actualPort, logger, screenshotDir);
         await devToolsMonitor.connect();
         console.log(`🔍 DevTools monitoring enabled`);
+        console.log(`📸 Screenshots will be saved to: ${screenshotDir}`);
         // Start the script
         const scriptProcess = scriptRunner.run(options.script);
         console.log(`⚡ Script "${options.script}" started`);

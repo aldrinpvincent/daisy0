@@ -1,5 +1,7 @@
 import CDP from 'chrome-remote-interface';
 import { DaisyLogger } from './logger';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class DevToolsMonitor {
   private client: any;
@@ -7,10 +9,17 @@ export class DevToolsMonitor {
   private logger: DaisyLogger;
   private connected: boolean = false;
   private pendingRequests = new Map<string, any>(); // Track requests by requestId
+  private screenshotDir: string;
 
-  constructor(port: number, logger: DaisyLogger) {
+  constructor(port: number, logger: DaisyLogger, screenshotDir: string = './screenshots') {
     this.port = port;
     this.logger = logger;
+    this.screenshotDir = screenshotDir;
+    
+    // Ensure screenshot directory exists
+    if (!fs.existsSync(this.screenshotDir)) {
+      fs.mkdirSync(this.screenshotDir, { recursive: true });
+    }
   }
 
   async connect(): Promise<void> {
@@ -56,7 +65,7 @@ export class DevToolsMonitor {
       // Set up event listeners for comprehensive debugging data
 
       // Console events
-      Runtime.consoleAPICalled((params: any) => {
+      Runtime.consoleAPICalled(async (params: any) => {
         // Extract clean message from console arguments
         const message = params.args.map((arg: any) => {
           if (arg.value !== undefined) return arg.value;
@@ -72,21 +81,31 @@ export class DevToolsMonitor {
           sourceLocation = `${fileName}:${frame.lineNumber}`;
         }
         
+        // Take screenshot on console errors
+        let screenshotPath = null;
+        if (params.type === 'error') {
+          screenshotPath = await this.takeScreenshot('console-error');
+        }
+        
         this.logger.logConsole(
           params.type,
           message,
-          sourceLocation ? [{ sourceLocation }] : undefined,
+          sourceLocation ? [{ sourceLocation, screenshot: screenshotPath }] : undefined,
           params.stackTrace
         );
       });
 
       // Runtime exceptions
-      Runtime.exceptionThrown((params: any) => {
+      Runtime.exceptionThrown(async (params: any) => {
+        // Take screenshot on JavaScript errors
+        const screenshotPath = await this.takeScreenshot('js-exception');
+        
         this.logger.logError(
           {
             message: params.exceptionDetails.text,
             stack: params.exceptionDetails.stackTrace,
-            name: 'RuntimeException'
+            name: 'RuntimeException',
+            screenshot: screenshotPath
           },
           'runtime_exception',
           JSON.stringify(params.exceptionDetails.stackTrace)
@@ -153,11 +172,16 @@ export class DevToolsMonitor {
         this.pendingRequests.delete(params.requestId);
       });
 
-      Network.loadingFailed((params: any) => {
+      Network.loadingFailed(async (params: any) => {
+        // Take screenshot on network failures (4xx/5xx errors)
+        const screenshotPath = await this.takeScreenshot('network-error');
+        
         this.logger.logError(
           {
             message: `Network loading failed: ${params.errorText}`,
-            name: 'NetworkError'
+            name: 'NetworkError',
+            url: params.request?.url,
+            screenshot: screenshotPath
           },
           'network_failure'
         );
@@ -202,6 +226,37 @@ export class DevToolsMonitor {
     } catch (error) {
       this.logger.logError(error, 'devtools_connection');
       throw error;
+    }
+  }
+
+  async takeScreenshot(errorContext: string = ''): Promise<string | null> {
+    if (!this.connected || !this.client) {
+      return null;
+    }
+
+    try {
+      const { Page } = this.client;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = errorContext 
+        ? `error-${errorContext}-${timestamp}.png`
+        : `screenshot-${timestamp}.png`;
+      const filepath = path.join(this.screenshotDir, filename);
+
+      // Capture screenshot
+      const screenshot = await Page.captureScreenshot({
+        format: 'png',
+        captureBeyondViewport: false
+      });
+
+      // Save screenshot to file
+      const buffer = Buffer.from(screenshot.data, 'base64');
+      fs.writeFileSync(filepath, buffer);
+
+      console.log(`📸 Screenshot saved: ${filepath}`);
+      return filepath;
+    } catch (error) {
+      console.error('❌ Failed to capture screenshot:', error);
+      return null;
     }
   }
 

@@ -90,6 +90,13 @@ Daisy follows a modular, event-driven architecture with clear separation of conc
 - Console logs are cleanly captured with source location and appropriate stack traces
 - Network requests filter out timing data, certificates, and verbose headers
 
+## Automatic Screenshot on Errors
+- **JavaScript errors**: Automatic screenshots when Runtime exceptions occur
+- **Console errors**: Screenshots captured for console.error() messages  
+- **Network failures**: Screenshots on network loading failures (4xx/5xx responses)
+- Screenshots saved to `./screenshots/` directory with descriptive filenames
+- Screenshot paths included in error log entries for visual debugging context
+
 ## Security Note
 For production use, consider implementing credential redaction for sensitive headers (Authorization, API keys, tokens) that are currently preserved for local debugging convenience.
 
