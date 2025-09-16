@@ -1,0 +1,31 @@
+{
+  "name": "daisy",
+  "version": "1.0.0",
+  "description": "A CLI tool for streaming browser debugging data via Chrome DevTools Protocol",
+  "main": "dist/index.js",
+  "bin": {
+    "daisy": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cli",
+    "devtools",
+    "debugging",
+    "chrome"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/chrome-remote-interface": "^0.31.14",
+    "@types/node": "^24.5.0",
+    "chrome-launcher": "^1.2.0",
+    "chrome-remote-interface": "^0.33.3",
+    "commander": "^14.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
