@@ -20,7 +20,7 @@ export declare class ScriptRunner {
      */
     private hasPS5IncompatibleOperators;
     /**
-     * Finds executable in node_modules/.bin, handling Windows extensions
+     * Finds npm command, handling Windows PATH issues
      */
     private findNpmCommand;
     private findNodeModulesBin;

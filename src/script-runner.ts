@@ -104,26 +104,45 @@ export class ScriptRunner {
   }
 
   /**
-   * Finds executable in node_modules/.bin, handling Windows extensions
+   * Finds npm command, handling Windows PATH issues
    */
   private findNpmCommand(): string {
     if (!this.isWindows) {
       return 'npm';
     }
 
+    // First, try to find npm in PATH by checking all PATH directories
+    const pathEnv = process.env.PATH || '';
+    const pathDirs = pathEnv.split(';');
+    
+    for (const dir of pathDirs) {
+      if (!dir.trim()) continue;
+      
+      const cleanDir = dir.trim().replace(/^"(.*)"$/, '$1'); // Remove quotes if present
+      const npmCmdPath = path.join(cleanDir, 'npm.cmd');
+      const npmPath = path.join(cleanDir, 'npm');
+      
+      if (fs.existsSync(npmCmdPath)) {
+        return npmCmdPath;
+      }
+      if (fs.existsSync(npmPath)) {
+        return npmPath;
+      }
+    }
+
     // Try different npm locations on Windows
     const npmLocations = [
+      'npm.cmd', // Most common on Windows
       'npm', // Let PATH handle it
-      'npm.cmd',
       path.join(process.env.APPDATA || '', 'npm', 'npm.cmd'),
       path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'npm.cmd'),
       path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs', 'npm.cmd'),
     ];
 
+    // Then try the hardcoded locations
     for (const npmPath of npmLocations) {
       try {
-        // Test if this npm path works
-        if (fs.existsSync(npmPath) || npmPath === 'npm' || npmPath === 'npm.cmd') {
+        if (fs.existsSync(npmPath)) {
           return npmPath;
         }
       } catch {
@@ -131,8 +150,8 @@ export class ScriptRunner {
       }
     }
 
-    // Fallback to just 'npm' and let the system handle it
-    return 'npm';
+    // Fallback to npm.cmd (most likely to work on Windows)
+    return 'npm.cmd';
   }
 
   private findNodeModulesBin(command: string): string | null {
@@ -202,47 +221,12 @@ export class ScriptRunner {
     
     // Check if we need shell execution for complex commands
     if (this.requiresShell(trimmed)) {
-      if (this.isWindows) {
-        const { shell, type } = this.getWindowsShell();
-        let finalShell = shell;
-        let finalType = type;
-        let args: string[];
-        
-        // Operator-aware shell selection for Windows
-        // If command has && or || operators and we only have PowerShell 5.x,
-        // use cmd.exe instead to avoid compatibility issues
-        if (this.hasPS5IncompatibleOperators(trimmed) && type === 'powershell') {
-          finalShell = 'cmd.exe';
-          finalType = 'cmd';
-        }
-        
-        // Use appropriate arguments for each shell type
-        switch (finalType) {
-          case 'pwsh':
-          case 'powershell':
-            args = ['-Command', trimmed];
-            break;
-          case 'cmd':
-            args = ['/d', '/s', '/c', trimmed];
-            break;
-          default:
-            args = ['/c', trimmed];
-        }
-        
-        return {
-          command: finalShell,
-          args,
-          useShell: false, // Don't use options.shell when we're explicitly invoking a shell
-          shellType: finalType
-        };
-      } else {
-        return {
-          command: '/bin/sh',
-          args: ['-c', trimmed],
-          useShell: false, // Don't use options.shell when we're explicitly invoking a shell
-          shellType: 'sh'
-        };
-      }
+      // Use shell execution and let Node.js handle shell selection
+      return {
+        command: trimmed,
+        args: [],
+        useShell: true
+      };
     }
 
     // Parse arguments properly
@@ -256,18 +240,12 @@ export class ScriptRunner {
 
     // Handle npm/yarn/pnpm commands specially
     if (['npm', 'yarn', 'pnpm'].includes(command)) {
-      // These are usually available globally, but check node_modules/.bin first
-      const localBin = this.findNodeModulesBin(command);
-      if (localBin) {
-        command = localBin;
-      } else if (command === 'npm') {
-        command = this.findNpmCommand();
-      } else if (this.isWindows && !command.includes('.')) {
-        // On Windows, ensure we can find the executable
-        command = command + '.cmd';
-      }
-      
-      return { command, args, useShell: false };
+      // Use shell execution for npm commands to avoid PATH issues
+      return {
+        command,
+        args,
+        useShell: true  // Let Node.js handle shell selection automatically
+      };
     }
 
     // Handle direct script names (assume npm run)
@@ -311,11 +289,30 @@ export class ScriptRunner {
       spawnOptions.shell = true;
     }
 
-    // On Windows, ensure PATH includes node_modules/.bin
+    // On Windows, ensure PATH includes node_modules/.bin and common npm locations
     if (this.isWindows) {
       const nodeModulesBin = path.join(process.cwd(), 'node_modules', '.bin');
+      const additionalPaths = [];
+      
       if (fs.existsSync(nodeModulesBin)) {
-        spawnOptions.env!.PATH = `${nodeModulesBin};${spawnOptions.env!.PATH}`;
+        additionalPaths.push(nodeModulesBin);
+      }
+      
+      // Add common npm installation paths to ensure npm is found
+      const commonNpmPaths = [
+        path.join(process.env.APPDATA || '', 'npm'),
+        path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs'),
+        path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs')
+      ];
+      
+      for (const npmPath of commonNpmPaths) {
+        if (fs.existsSync(npmPath)) {
+          additionalPaths.push(npmPath);
+        }
+      }
+      
+      if (additionalPaths.length > 0) {
+        spawnOptions.env!.PATH = `${additionalPaths.join(';')};${spawnOptions.env!.PATH}`;
       }
     } else {
       const nodeModulesBin = path.join(process.cwd(), 'node_modules', '.bin');

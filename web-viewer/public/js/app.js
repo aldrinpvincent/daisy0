@@ -461,11 +461,11 @@ class DaisyViewer {
     }
 
     showLoading() {
-        document.getElementById('loading-state').style.display = 'block';
+        // document.getElementById('loading-state').style.display = 'block';
     }
 
     hideLoading() {
-        document.getElementById('loading-state').style.display = 'none';
+        // document.getElementById('loading-state').style.display = 'none';
     }
 
     showError(message) {

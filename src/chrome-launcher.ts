@@ -12,7 +12,6 @@ export class ChromeLauncher {
     this.chrome = await chromeLauncher.launch({
       port: this.port,
       chromeFlags: [
-        '--headless',
         '--disable-gpu',
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
