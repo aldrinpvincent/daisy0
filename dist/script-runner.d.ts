@@ -22,6 +22,7 @@ export declare class ScriptRunner {
     /**
      * Finds executable in node_modules/.bin, handling Windows extensions
      */
+    private findNpmCommand;
     private findNodeModulesBin;
     /**
      * Properly parses command arguments respecting quotes and escapes

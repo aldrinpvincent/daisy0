@@ -124,6 +124,32 @@ class ScriptRunner {
     /**
      * Finds executable in node_modules/.bin, handling Windows extensions
      */
+    findNpmCommand() {
+        if (!this.isWindows) {
+            return 'npm';
+        }
+        // Try different npm locations on Windows
+        const npmLocations = [
+            'npm', // Let PATH handle it
+            'npm.cmd',
+            path.join(process.env.APPDATA || '', 'npm', 'npm.cmd'),
+            path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'npm.cmd'),
+            path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs', 'npm.cmd'),
+        ];
+        for (const npmPath of npmLocations) {
+            try {
+                // Test if this npm path works
+                if (fs.existsSync(npmPath) || npmPath === 'npm' || npmPath === 'npm.cmd') {
+                    return npmPath;
+                }
+            }
+            catch {
+                continue;
+            }
+        }
+        // Fallback to just 'npm' and let the system handle it
+        return 'npm';
+    }
     findNodeModulesBin(command) {
         const binDir = path.join(process.cwd(), 'node_modules', '.bin');
         if (!fs.existsSync(binDir)) {
@@ -238,6 +264,9 @@ class ScriptRunner {
             if (localBin) {
                 command = localBin;
             }
+            else if (command === 'npm') {
+                command = this.findNpmCommand();
+            }
             else if (this.isWindows && !command.includes('.')) {
                 // On Windows, ensure we can find the executable
                 command = command + '.cmd';
@@ -246,8 +275,9 @@ class ScriptRunner {
         }
         // Handle direct script names (assume npm run)
         if (parts.length === 1 && !trimmed.includes(' ') && !path.isAbsolute(command)) {
+            const npmCommand = this.findNpmCommand();
             return {
-                command: this.isWindows ? 'npm.cmd' : 'npm',
+                command: npmCommand,
                 args: ['run', command],
                 useShell: false
             };
@@ -263,12 +293,6 @@ class ScriptRunner {
     }
     run(script) {
         const parsedCommand = this.parseScript(script);
-        // Debug output for Windows troubleshooting
-        console.log(`[DEBUG] Script: "${script}"`);
-        console.log(`[DEBUG] Parsed command: "${parsedCommand.command}"`);
-        console.log(`[DEBUG] Parsed args:`, parsedCommand.args);
-        console.log(`[DEBUG] Use shell: ${parsedCommand.useShell}`);
-        console.log(`[DEBUG] Shell type: ${parsedCommand.shellType || 'none'}`);
         // Build spawn options
         const spawnOptions = {
             cwd: process.cwd(),
