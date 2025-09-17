@@ -10,6 +10,7 @@ import treeKill from 'tree-kill';
 
 export interface DevEnvironmentConfig {
   script: string;
+  appPort: number;
   webViewerPort: number;
   mcpServerPort: number;
   chromePort: number;
@@ -194,6 +195,60 @@ export class DevEnvironment {
     await this.devToolsMonitor.connect();
     
     console.log('   ✅ DevTools monitoring enabled');
+    
+    // Wait for the app server to be available and then navigate
+    await this.waitForAppServer();
+    await this.navigateToApp();
+  }
+
+  /**
+   * Wait for the app server to be available
+   */
+  private async waitForAppServer(): Promise<void> {
+    const maxAttempts = 30; // 30 seconds
+    let attempts = 0;
+    
+    console.log(`🔄 Waiting for app server on port ${this.config.appPort}...`);
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await fetch(`http://localhost:${this.config.appPort}`, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(2000)
+        });
+        
+        if (response.ok || response.status < 500) {
+          console.log(`   ✅ App server is ready on port ${this.config.appPort}`);
+          return;
+        }
+      } catch (error) {
+        // Server not ready yet, continue waiting
+      }
+      
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    console.warn(`   ⚠️  App server not responding after ${maxAttempts} seconds, proceeding anyway...`);
+  }
+
+  /**
+   * Navigate Chrome to the app
+   */
+  private async navigateToApp(): Promise<void> {
+    if (!this.devToolsMonitor) {
+      throw new Error('DevTools monitor not initialized');
+    }
+    
+    const appUrl = `http://localhost:${this.config.appPort}`;
+    console.log(`🎯 Navigating to app: ${appUrl}`);
+    
+    try {
+      await this.devToolsMonitor.navigateToUrl(appUrl);
+      console.log(`   ✅ Successfully navigated to ${appUrl}`);
+    } catch (error) {
+      console.error(`   ❌ Failed to navigate to ${appUrl}:`, error);
+    }
   }
 
   /**

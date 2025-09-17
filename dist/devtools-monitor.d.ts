@@ -9,6 +9,7 @@ export declare class DevToolsMonitor {
     constructor(port: number, logger: DaisyLogger, screenshotDir?: string);
     connect(): Promise<void>;
     takeScreenshot(errorContext?: string): Promise<string | null>;
+    navigateToUrl(url: string): Promise<void>;
     disconnect(): Promise<void>;
     isConnected(): boolean;
 }

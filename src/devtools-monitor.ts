@@ -260,6 +260,27 @@ export class DevToolsMonitor {
     }
   }
 
+  async navigateToUrl(url: string): Promise<void> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Page } = this.client;
+      console.log(`🌐 Navigating to ${url}`);
+      await Page.navigate({ url });
+      this.logger.logPageEvent('navigation', { url }, url);
+      
+      // Take a screenshot after navigation
+      setTimeout(() => {
+        this.takeScreenshot('navigation');
+      }, 1000);
+    } catch (error) {
+      console.error(`❌ Failed to navigate to ${url}:`, error);
+      throw error;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client && this.connected) {
       await this.client.close();

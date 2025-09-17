@@ -10,19 +10,19 @@ const program = new Command();
 // Package manager detection (like dev3000)
 function detectPackageManager(): { manager: string; runScript: string } {
   const cwd = process.cwd();
-  
+
   if (fs.existsSync(path.join(cwd, 'pnpm-lock.yaml'))) {
     return { manager: 'pnpm', runScript: 'pnpm run' };
   }
-  
+
   if (fs.existsSync(path.join(cwd, 'yarn.lock'))) {
     return { manager: 'yarn', runScript: 'yarn' };
   }
-  
+
   if (fs.existsSync(path.join(cwd, 'package-lock.json'))) {
     return { manager: 'npm', runScript: 'npm run' };
   }
-  
+
   // Default to npm if no lockfile found
   return { manager: 'npm', runScript: 'npm run' };
 }
@@ -34,19 +34,19 @@ function detectDefaultScript(): string {
     if (!fs.existsSync(packageJsonPath)) {
       return 'dev';
     }
-    
+
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     const scripts = pkg.scripts || {};
-    
+
     // Priority order for script detection
     const commonScripts = ['dev', 'start:dev', 'develop', 'serve', 'start'];
-    
+
     for (const script of commonScripts) {
       if (scripts[script]) {
         return script;
       }
     }
-    
+
     // Fallback to 'dev' if common scripts not found
     return 'dev';
   } catch (error) {
@@ -62,7 +62,8 @@ program
 
 program
   .option('-s, --script <script>', 'Script to run (auto-detected by default)')
-  .option('-p, --port <port>', 'Web viewer port', '5000')
+  .option('-p, --port <port>', 'Development server port', '3000')
+  .option('--web-port <port>', 'Web viewer port', '5000')
   .option('--mcp-port <port>', 'MCP server port', '3684')
   .option('--chrome-port <port>', 'Chrome debugging port', '9222')
   .option('--browser <browser>', 'Browser to launch', 'chrome')
@@ -72,29 +73,31 @@ program
   .action(async (options) => {
     console.log('\n🌼 Daisy - Unified Browser Debugging Tool');
     console.log('========================================\n');
-    
+
     // Detect package manager and script
     const { manager, runScript } = detectPackageManager();
     const script = options.script || detectDefaultScript();
-    
+
     console.log(`📦 Package Manager: ${manager}`);
     console.log(`🚀 Script: ${runScript} ${script}`);
-    console.log(`🌐 Web Viewer: http://localhost:${options.port}`);
+    console.log(`🌐 Your App: http://localhost:${options.port}`);
+    console.log(`📊 Web Viewer: http://localhost:${options.webPort}`);
     console.log(`🤖 MCP Server: stdio transport (for AI assistants)`);
     console.log(`🔍 Chrome Debugging: port ${options.chromePort}`);
-    
+
     if (options.debug) {
       console.log(`🐛 Debug Mode: enabled`);
       console.log(`📊 Log Level: ${options.logLevel}`);
     }
-    
+
     console.log('\n');
-    
+
     try {
       // Initialize development environment
       const devEnv = new DevEnvironment({
         script: `${runScript} ${script}`,
-        webViewerPort: parseInt(options.port),
+        appPort: parseInt(options.port),
+        webViewerPort: parseInt(options.webPort),
         mcpServerPort: parseInt(options.mcpPort),
         chromePort: parseInt(options.chromePort),
         browser: options.browser,
@@ -102,9 +105,9 @@ program
         debugMode: options.debug,
         logLevel: options.logLevel
       });
-      
+
       await devEnv.start();
-      
+
     } catch (error) {
       console.error('\n❌ Failed to start daisy:', error);
       process.exit(1);
