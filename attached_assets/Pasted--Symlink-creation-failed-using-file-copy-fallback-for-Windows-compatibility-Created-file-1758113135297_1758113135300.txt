@@ -1,0 +1,46 @@
+
+⚠️  Symlink creation failed, using file copy fallback for Windows compatibility
+   ✅ Created file copy: C:\Users\ALDVIN~1\AppData\Local\Temp\daisy\current.log
+🚀 Starting daisy development environment...
+
+📝 Centralized logging: C:\Users\ALDVIN~1\AppData\Local\Temp\daisy\current.log
+📸 Screenshots: C:\Users\ALDVIN~1\AppData\Local\Temp\daisy\screenshots
+   🔄 File synchronization active (Windows copy mode)
+
+🌐 Starting Chrome and user script...
+❌ Failed to start development environment: Error: spawn EINVAL
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at spawn (node:child_process:754:9)
+    at ScriptRunner.run (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\script-runner.js:290:50)
+    at DevEnvironment.startChromeAndScript (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\dev-environment.js:164:49)
+    at DevEnvironment.start (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\dev-environment.js:129:28)
+    at Command.<anonymous> (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\cli.js:124:22)
+    at Command.listener [as _actionHandler] (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:568:17)
+    at C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1604:14
+    at Command._chainOrCall (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1488:12)
+    at Command._parseCommand (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1603:27) {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'spawn'
+}
+🧹 Cleaning up services...
+   ✅ File synchronization stopped
+   ✅ Script stopped
+   ✅ Logger closed
+✅ Cleanup complete
+
+❌ Failed to start daisy: Error: spawn EINVAL
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at spawn (node:child_process:754:9)
+    at ScriptRunner.run (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\script-runner.js:290:50)
+    at DevEnvironment.startChromeAndScript (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\dev-environment.js:164:49)
+    at DevEnvironment.start (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\dev-environment.js:129:28)
+    at Command.<anonymous> (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\dist\cli.js:124:22)
+    at Command.listener [as _actionHandler] (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:568:17)
+    at C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1604:14
+    at Command._chainOrCall (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1488:12)
+    at Command._parseCommand (C:\Users\aldvincent\Desktop\aldrin\apps\daisy_new\daisy0\node_modules\commander\lib\command.js:1603:27) {
+  errno: -4071,
+  code: 'EINVAL',
+  syscall: 'spawn'
+}
