@@ -1,16 +1,25 @@
 {
   "name": "daisy",
   "version": "1.0.0",
-  "description": "A CLI tool for streaming browser debugging data via Chrome DevTools Protocol",
-  "main": "dist/index.js",
+  "description": "🌼 Unified browser debugging tool - starts everything with one command (like dev3000)",
+  "main": "dist/cli.js",
   "bin": {
-    "daisy": "./dist/index.js"
+    "daisy": "./dist/cli.js",
+    "d3k": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc && chmod +x dist/cli.js && npm run build:mcp",
+    "build:mcp": "cd mcp-server && npm install && npm run build",
+    "dev": "ts-node src/cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
+  "files": [
+    "dist/",
+    "web-viewer/",
+    "mcp-server/dist/",
+    "README.md"
+  ],
   "keywords": [
     "cli",
     "devtools",
