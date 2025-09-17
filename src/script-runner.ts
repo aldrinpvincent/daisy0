@@ -15,10 +15,48 @@ export class ScriptRunner {
   private readonly isWindows = process.platform === 'win32';
 
   /**
+   * Checks if a command is available in PATH (synchronous check)
+   */
+  private isCommandInPath(command: string): boolean {
+    if (!this.isWindows) {
+      return false; // This method is Windows-specific
+    }
+    
+    const pathEnv = process.env.PATH || '';
+    const pathDirs = pathEnv.split(';');
+    const extensions = process.env.PATHEXT?.split(';') || ['.exe', '.cmd', '.bat'];
+    
+    for (const dir of pathDirs) {
+      if (!dir.trim()) continue;
+      
+      // Check command with various extensions
+      for (const ext of extensions) {
+        const fullPath = path.join(dir.trim(), command + ext);
+        if (fs.existsSync(fullPath)) {
+          return true;
+        }
+      }
+      
+      // Also check without extension
+      const fullPath = path.join(dir.trim(), command);
+      if (fs.existsSync(fullPath)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
    * Detects the preferred shell on Windows and returns both shell path and type
    */
   private getWindowsShell(): { shell: string; type: 'pwsh' | 'powershell' | 'cmd' } {
-    // Prefer pwsh.exe (PowerShell Core) first
+    // First check if pwsh is available in PATH
+    if (this.isCommandInPath('pwsh')) {
+      return { shell: 'pwsh.exe', type: 'pwsh' };
+    }
+    
+    // Check hardcoded paths for pwsh (PowerShell Core)
     const pwshPaths = [
       'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
       'C:\\Program Files\\PowerShell\\6\\pwsh.exe'
@@ -54,6 +92,14 @@ export class ScriptRunner {
            script.includes('"') || 
            script.includes("'") ||
            script.includes('`');
+  }
+
+  /**
+   * Checks if a command contains operators that are problematic in PowerShell 5.x
+   * PowerShell 5.x doesn't support && and || operators like cmd.exe does
+   */
+  private hasPS5IncompatibleOperators(script: string): boolean {
+    return script.includes('&&') || script.includes('||');
   }
 
   /**
@@ -128,10 +174,20 @@ export class ScriptRunner {
     if (this.requiresShell(trimmed)) {
       if (this.isWindows) {
         const { shell, type } = this.getWindowsShell();
+        let finalShell = shell;
+        let finalType = type;
         let args: string[];
         
+        // Operator-aware shell selection for Windows
+        // If command has && or || operators and we only have PowerShell 5.x,
+        // use cmd.exe instead to avoid compatibility issues
+        if (this.hasPS5IncompatibleOperators(trimmed) && type === 'powershell') {
+          finalShell = 'cmd.exe';
+          finalType = 'cmd';
+        }
+        
         // Use appropriate arguments for each shell type
-        switch (type) {
+        switch (finalType) {
           case 'pwsh':
           case 'powershell':
             args = ['-Command', trimmed];
@@ -144,10 +200,10 @@ export class ScriptRunner {
         }
         
         return {
-          command: shell,
+          command: finalShell,
           args,
           useShell: false, // Don't use options.shell when we're explicitly invoking a shell
-          shellType: type
+          shellType: finalType
         };
       } else {
         return {

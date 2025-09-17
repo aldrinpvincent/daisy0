@@ -3,6 +3,10 @@ export declare class ScriptRunner {
     private process;
     private readonly isWindows;
     /**
+     * Checks if a command is available in PATH (synchronous check)
+     */
+    private isCommandInPath;
+    /**
      * Detects the preferred shell on Windows and returns both shell path and type
      */
     private getWindowsShell;
@@ -10,6 +14,11 @@ export declare class ScriptRunner {
      * Checks if a command contains shell metacharacters that require shell execution
      */
     private requiresShell;
+    /**
+     * Checks if a command contains operators that are problematic in PowerShell 5.x
+     * PowerShell 5.x doesn't support && and || operators like cmd.exe does
+     */
+    private hasPS5IncompatibleOperators;
     /**
      * Finds executable in node_modules/.bin, handling Windows extensions
      */
