@@ -136,7 +136,13 @@ export class DevEnvironment {
       console.log('\n🌼 Daisy is running! Available at:');
       console.log(`   📊 Web Viewer: http://localhost:${this.config.webViewerPort}`);
       console.log(`   🤖 MCP Server: stdio transport (for AI assistants)`);
-      console.log(`   📝 Live Logs: tail -f ${this.symlinkPath}`);
+      // Show platform-appropriate log viewing command
+      if (process.platform === 'win32') {
+        console.log(`   📝 Live Logs: Get-Content -Path "${this.symlinkPath}" -Wait`);
+        console.log(`   📝 Or use: type "${this.symlinkPath}" (static view)`);
+      } else {
+        console.log(`   📝 Live Logs: tail -f ${this.symlinkPath}`);
+      }
       console.log('\n   Press Ctrl+C to stop all services.');
       
       // Keep process alive
