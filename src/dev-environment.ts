@@ -2,6 +2,7 @@ import { ChromeLauncher } from './chrome-launcher';
 import { DevToolsMonitor } from './devtools-monitor';
 import { ScriptRunner } from './script-runner';
 import { DaisyLogger, LogLevel } from './logger';
+import { ControlServer } from './control-server';
 import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,6 +15,7 @@ export interface DevEnvironmentConfig {
   webViewerPort: number;
   mcpServerPort: number;
   chromePort: number;
+  controlServerPort: number;
   browser: string;
   serversOnly: boolean;
   debugMode: boolean;
@@ -27,6 +29,7 @@ export class DevEnvironment {
   private scriptRunner?: ScriptRunner;
   private webViewerProcess?: ChildProcess;
   private mcpServerProcess?: ChildProcess;
+  private controlServer?: ControlServer;
   private logger?: DaisyLogger;
   private logFilePath: string;
   private symlinkPath: string;
@@ -101,12 +104,20 @@ export class DevEnvironment {
       // await this.startWebViewer();
       await this.startMCPServer();
       
+      // Start control server if DevTools monitoring is enabled
+      if (!this.config.serversOnly && this.devToolsMonitor) {
+        await this.startControlServer();
+      }
+      
       this.setupGracefulShutdown();
       
       console.log('\n✅ All services started successfully!');
       console.log('\n🌼 Daisy is running! Available at:');
       console.log(`   📊 Web Viewer: http://localhost:${this.config.webViewerPort}`);
       console.log(`   🤖 MCP Server: stdio transport (for AI assistants)`);
+      if (this.controlServer && this.controlServer.isRunning()) {
+        console.log(`   🎮 Control API: http://localhost:${this.config.controlServerPort}`);
+      }
       // Show platform-appropriate log viewing command
       if (process.platform === 'win32') {
         console.log(`   📝 Live Logs: Get-Content -Path "${this.symlinkPath}" -Wait`);
@@ -303,6 +314,29 @@ export class DevEnvironment {
   }
 
   /**
+   * Start Control API server
+   */
+  private async startControlServer(): Promise<void> {
+    if (!this.devToolsMonitor || !this.logger) {
+      throw new Error('DevTools monitor and logger must be initialized before starting control server');
+    }
+
+    console.log('🎮 Starting Control API server...');
+    
+    this.controlServer = new ControlServer(
+      this.devToolsMonitor, 
+      this.logger, 
+      { 
+        port: this.config.controlServerPort,
+        host: '0.0.0.0'
+      }
+    );
+    
+    await this.controlServer.start();
+    console.log(`   ✅ Control API server ready on port ${this.config.controlServerPort}`);
+  }
+
+  /**
    * Wait for DevTools to be ready
    */
   private async waitForDevTools(port: number): Promise<void> {
@@ -461,6 +495,13 @@ export class DevEnvironment {
             resolve();
           });
         });
+      }
+      
+      // Stop Control API server
+      if (this.controlServer) {
+        console.log('🎮 Stopping Control API server...');
+        await this.controlServer.stop();
+        console.log('   ✅ Control API server stopped');
       }
       
       // Stop MCP server

@@ -66,6 +66,7 @@ program
   .option('--web-port <port>', 'Web viewer port', '5000')
   .option('--mcp-port <port>', 'MCP server port', '3684')
   .option('--chrome-port <port>', 'Chrome debugging port', '9222')
+  .option('--control-port <port>', 'Control API server port', '9223')
   .option('--browser <browser>', 'Browser to launch', 'chrome')
   .option('--servers-only', 'Start only web viewer and MCP server (no Chrome)', false)
   .option('--debug', 'Enable debug mode with verbose logging', false)
@@ -84,6 +85,7 @@ program
     console.log(`📊 Web Viewer: http://localhost:${options.webPort}`);
     console.log(`🤖 MCP Server: stdio transport (for AI assistants)`);
     console.log(`🔍 Chrome Debugging: port ${options.chromePort}`);
+    console.log(`🎮 Control API: http://localhost:${options.controlPort}`);
 
     if (options.debug) {
       console.log(`🐛 Debug Mode: enabled`);
@@ -100,6 +102,7 @@ program
         webViewerPort: parseInt(options.webPort),
         mcpServerPort: parseInt(options.mcpPort),
         chromePort: parseInt(options.chromePort),
+        controlServerPort: parseInt(options.controlPort),
         browser: options.browser,
         serversOnly: options.serversOnly,
         debugMode: options.debug,

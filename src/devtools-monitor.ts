@@ -3,6 +3,27 @@ import { DaisyLogger } from './logger';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface NetworkRequest {
+  requestId: string;
+  method: string;
+  url: string;
+  headers: any;
+  postData?: string;
+  status?: number;
+  responseHeaders?: any;
+  responseBody?: any;
+  timestamp: number;
+  loadingFailed?: boolean;
+  errorText?: string;
+}
+
+export interface ScrollOptions {
+  selector?: string;
+  x?: number;
+  y?: number;
+  behavior?: 'smooth' | 'instant' | 'auto';
+}
+
 export class DevToolsMonitor {
   private client: any;
   private port: number;
@@ -12,6 +33,8 @@ export class DevToolsMonitor {
   private screenshotDir: string;
   private networkRequestCount = 0;
   private networkIdleTimer?: NodeJS.Timeout;
+  private networkRequestBuffer: NetworkRequest[] = []; // Ring buffer for network requests
+  private maxNetworkRequests = 1000; // Max requests to keep in buffer
 
   constructor(port: number, logger: DaisyLogger, screenshotDir: string = './screenshots') {
     this.port = port;
@@ -51,9 +74,10 @@ export class DevToolsMonitor {
     }
 
     try {
-      const { Runtime, Network, Log, Performance, Page, Security, Debugger } = this.client;
+      const { Runtime, Network, Log, Performance, Page, Security, Debugger, CSS } = this.client;
+      const DOM = this.client.DOM;
 
-      // Enable all domains for comprehensive monitoring
+      // Enable all domains for comprehensive monitoring and control
       await Promise.all([
         Runtime.enable(),
         Network.enable(),
@@ -61,7 +85,9 @@ export class DevToolsMonitor {
         Performance.enable(),
         Page.enable(),
         Security.enable(),
-        Debugger.enable()
+        Debugger.enable(),
+        CSS.enable(), // Enable CSS domain for computed styles
+        DOM.enable()  // Enable DOM domain for element interaction
       ]);
 
       // Set up event listeners for comprehensive debugging data
@@ -117,12 +143,27 @@ export class DevToolsMonitor {
       // Network request events - track requests and responses
       Network.requestWillBeSent((params: any) => {
         // Store request info for later when response comes
-        this.pendingRequests.set(params.requestId, {
+        const requestData = {
           method: params.request.method,
           url: params.request.url,
           headers: params.request.headers,
-          postData: params.request.postData
-        });
+          postData: params.request.postData,
+          timestamp: Date.now()
+        };
+        
+        this.pendingRequests.set(params.requestId, requestData);
+
+        // Add to network buffer
+        const networkRequest: NetworkRequest = {
+          requestId: params.requestId,
+          method: params.request.method,
+          url: params.request.url,
+          headers: params.request.headers,
+          postData: params.request.postData,
+          timestamp: Date.now()
+        };
+        
+        this.addToNetworkBuffer(networkRequest);
 
         // Track network activity for idle detection (like dev3000)
         this.networkRequestCount++;
@@ -167,9 +208,11 @@ export class DevToolsMonitor {
           return null;
         };
 
+        let responseBody: any = null;
+        
         try {
           // Get the actual response body content with retry
-          const responseBody = await getResponseBodyWithRetry(params.requestId);
+          responseBody = await getResponseBodyWithRetry(params.requestId);
 
           // Log the complete request/response
           this.logger.logNetwork(
@@ -192,13 +235,29 @@ export class DevToolsMonitor {
           );
         }
 
+        // Update network buffer with response data
+        this.updateNetworkBufferResponse(params.requestId, {
+          status: params.response.status,
+          responseHeaders: params.response.headers,
+          responseBody
+        });
+
         // Clean up tracked request
         this.pendingRequests.delete(params.requestId);
+        
+        // Decrement network activity counter
+        this.networkRequestCount = Math.max(0, this.networkRequestCount - 1);
       });
 
       Network.loadingFailed(async (params: any) => {
         // Take screenshot on network failures (4xx/5xx errors)
         const screenshotPath = await this.takeScreenshot('network-error');
+
+        // Update network buffer with error
+        this.updateNetworkBufferResponse(params.requestId, {
+          loadingFailed: true,
+          errorText: params.errorText
+        });
 
         this.logger.logError(
           {
@@ -209,6 +268,9 @@ export class DevToolsMonitor {
           },
           'network_failure'
         );
+        
+        // Decrement network activity counter
+        this.networkRequestCount = Math.max(0, this.networkRequestCount - 1);
       });
 
       // Page events
@@ -233,7 +295,6 @@ export class DevToolsMonitor {
       });
 
       // DOM mutation tracking (like dev3000)
-      const { DOM } = this.client;
       DOM.documentUpdated(() => {
         this.logger.logPageEvent('documentUpdated', {}, 'Document structure changed');
       });
@@ -575,5 +636,682 @@ export class DevToolsMonitor {
         this.takeScreenshot('network-idle');
       }
     }, 2000);
+  }
+
+  /**
+   * Add network request to ring buffer
+   */
+  private addToNetworkBuffer(request: NetworkRequest): void {
+    this.networkRequestBuffer.unshift(request);
+    
+    // Keep buffer size within limit
+    if (this.networkRequestBuffer.length > this.maxNetworkRequests) {
+      this.networkRequestBuffer = this.networkRequestBuffer.slice(0, this.maxNetworkRequests);
+    }
+  }
+
+  /**
+   * Update network request in buffer with response data
+   */
+  private updateNetworkBufferResponse(requestId: string, responseData: Partial<NetworkRequest>): void {
+    const requestIndex = this.networkRequestBuffer.findIndex(req => req.requestId === requestId);
+    if (requestIndex !== -1) {
+      Object.assign(this.networkRequestBuffer[requestIndex], responseData);
+    }
+  }
+
+  /**
+   * Get recent network requests from buffer
+   */
+  getNetworkRequests(limit: number = 50): NetworkRequest[] {
+    return this.networkRequestBuffer.slice(0, Math.min(limit, this.networkRequestBuffer.length));
+  }
+
+  /**
+   * Enhanced navigation with timeout and wait options
+   */
+  async navigateTo(url: string, waitForLoad: boolean = true, timeout: number = 30000): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Page } = this.client;
+      console.log(`🌐 Navigating to ${url}`);
+      
+      // Navigate with timeout
+      const navigationPromise = Page.navigate({ url });
+      
+      if (waitForLoad) {
+        // Wait for both navigation and load event
+        const loadPromise = new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error(`Navigation timeout after ${timeout}ms`));
+          }, timeout);
+          
+          const loadHandler = () => {
+            clearTimeout(timeoutId);
+            Page.removeListener('loadEventFired', loadHandler);
+            resolve(undefined);
+          };
+          
+          Page.on('loadEventFired', loadHandler);
+        });
+        
+        await Promise.all([navigationPromise, loadPromise]);
+      } else {
+        await navigationPromise;
+      }
+
+      this.logger.logPageEvent('navigation', { url, waitForLoad, timeout }, url);
+
+      // Take a screenshot after navigation
+      setTimeout(() => {
+        this.takeScreenshot('navigation');
+      }, 1000);
+
+      // Set up interaction tracking after navigation
+      setTimeout(() => {
+        this.setupInteractionTracking();
+      }, 1500);
+      
+      return { success: true, url };
+    } catch (error) {
+      console.error(`❌ Failed to navigate to ${url}:`, error);
+      this.logger.logError(error as Error, 'navigation_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Click on an element by CSS selector
+   */
+  async clickElement(selector: string, timeout: number = 5000): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime, DOM } = this.client;
+      
+      // Wait for element to be available
+      await this.waitForElement(selector, timeout);
+      
+      // Get element coordinates and click
+      const clickScript = `
+        (() => {
+          const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+          if (!element) {
+            throw new Error('Element not found: ${selector}');
+          }
+          
+          const rect = element.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          
+          // Scroll element into view if needed
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Dispatch click event
+          const clickEvent = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            clientX: centerX,
+            clientY: centerY
+          });
+          
+          element.dispatchEvent(clickEvent);
+          
+          return {
+            success: true,
+            selector: '${selector}',
+            coordinates: { x: centerX, y: centerY },
+            elementTag: element.tagName,
+            elementText: element.textContent?.trim().substring(0, 50) || ''
+          };
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: clickScript,
+        returnByValue: true,
+        timeout: timeout
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Click failed: ${result.exceptionDetails.text}`);
+      }
+      
+      // Take screenshot after click
+      await this.takeScreenshot('click-action');
+      
+      this.logger.logInteraction('CLICK', { selector, result: result.result.value }, `Clicked element: ${selector}`);
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to click element ${selector}:`, error);
+      this.logger.logError(error as Error, 'click_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Type text into an element
+   */
+  async typeText(selector: string, text: string, timeout: number = 5000, clear: boolean = false): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      
+      // Wait for element to be available
+      await this.waitForElement(selector, timeout);
+      
+      const typeScript = `
+        (() => {
+          const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+          if (!element) {
+            throw new Error('Element not found: ${selector}');
+          }
+          
+          // Focus the element
+          element.focus();
+          
+          // Clear existing content if requested
+          if (${clear}) {
+            if (element.value !== undefined) {
+              element.value = '';
+            } else {
+              element.textContent = '';
+            }
+          }
+          
+          // Type the text
+          const textToType = '${text.replace(/'/g, "\\'")}';
+          
+          if (element.value !== undefined) {
+            // Input/textarea elements
+            element.value += textToType;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            // ContentEditable elements
+            element.textContent += textToType;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          
+          return {
+            success: true,
+            selector: '${selector}',
+            text: textToType,
+            elementTag: element.tagName,
+            finalValue: element.value || element.textContent
+          };
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: typeScript,
+        returnByValue: true,
+        timeout: timeout
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Type failed: ${result.exceptionDetails.text}`);
+      }
+      
+      this.logger.logInteraction('TYPE', { selector, text, clear, result: result.result.value }, `Typed text in: ${selector}`);
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to type in element ${selector}:`, error);
+      this.logger.logError(error as Error, 'type_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Scroll to element or coordinates
+   */
+  async scrollTo(options: ScrollOptions): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      
+      let scrollScript: string;
+      
+      if (options.selector) {
+        // Scroll to element
+        scrollScript = `
+          (() => {
+            const element = document.querySelector('${options.selector?.replace(/'/g, "\\'")}}');
+            if (!element) {
+              throw new Error('Element not found: ${options.selector}');
+            }
+            
+            element.scrollIntoView({ 
+              behavior: '${options.behavior || 'smooth'}',
+              block: 'center',
+              inline: 'center'
+            });
+            
+            const rect = element.getBoundingClientRect();
+            return {
+              success: true,
+              selector: '${options.selector}',
+              elementPosition: { x: rect.left, y: rect.top },
+              scrollBehavior: '${options.behavior || 'smooth'}'
+            };
+          })()
+        `;
+      } else if (options.x !== undefined || options.y !== undefined) {
+        // Scroll to coordinates
+        const x = options.x || 0;
+        const y = options.y || 0;
+        scrollScript = `
+          (() => {
+            window.scrollTo({
+              left: ${x},
+              top: ${y},
+              behavior: '${options.behavior || 'smooth'}'
+            });
+            
+            return {
+              success: true,
+              coordinates: { x: ${x}, y: ${y} },
+              scrollBehavior: '${options.behavior || 'smooth'}'
+            };
+          })()
+        `;
+      } else {
+        throw new Error('Either selector or coordinates (x, y) must be provided');
+      }
+      
+      const result = await Runtime.evaluate({
+        expression: scrollScript,
+        returnByValue: true
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Scroll failed: ${result.exceptionDetails.text}`);
+      }
+      
+      this.logger.logInteraction('SCROLL', options, `Scrolled: ${JSON.stringify(options)}`);
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to scroll:`, error);
+      this.logger.logError(error as Error, 'scroll_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Inspect DOM element properties
+   */
+  async inspectDOM(selector: string, properties: string[] = ['textContent', 'innerHTML', 'outerHTML', 'className', 'id']): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      
+      const inspectScript = `
+        (() => {
+          const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+          if (!element) {
+            throw new Error('Element not found: ${selector}');
+          }
+          
+          const properties = ${JSON.stringify(properties)};
+          const result = {
+            selector: '${selector}',
+            tagName: element.tagName,
+            properties: {},
+            attributes: {},
+            rect: element.getBoundingClientRect(),
+            visible: element.offsetParent !== null
+          };
+          
+          // Get requested properties
+          properties.forEach(prop => {
+            try {
+              result.properties[prop] = element[prop];
+            } catch (e) {
+              result.properties[prop] = null;
+            }
+          });
+          
+          // Get all attributes
+          for (let attr of element.attributes) {
+            result.attributes[attr.name] = attr.value;
+          }
+          
+          return result;
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: inspectScript,
+        returnByValue: true
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`DOM inspection failed: ${result.exceptionDetails.text}`);
+      }
+      
+      this.logger.logConsole('info', `Inspected DOM element: ${selector}`, undefined, undefined, 'DOM_INSPECT');
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to inspect DOM element ${selector}:`, error);
+      this.logger.logError(error as Error, 'dom_inspect_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get computed styles for an element
+   */
+  async getComputedStyles(selector: string, properties: string[] = ['color', 'background-color', 'font-size', 'display', 'position']): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime, DOM, CSS } = this.client;
+      
+      const stylesScript = `
+        (() => {
+          const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+          if (!element) {
+            throw new Error('Element not found: ${selector}');
+          }
+          
+          const computedStyles = window.getComputedStyle(element);
+          const properties = ${JSON.stringify(properties)};
+          const result = {
+            selector: '${selector}',
+            styles: {}
+          };
+          
+          properties.forEach(prop => {
+            result.styles[prop] = computedStyles.getPropertyValue(prop);
+          });
+          
+          return result;
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: stylesScript,
+        returnByValue: true
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Computed styles failed: ${result.exceptionDetails.text}`);
+      }
+      
+      this.logger.logConsole('info', `Got computed styles for: ${selector}`, undefined, undefined, 'COMPUTED_STYLES');
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to get computed styles for ${selector}:`, error);
+      this.logger.logError(error as Error, 'computed_styles_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Execute JavaScript code in browser context
+   */
+  async evaluateJavaScript(code: string, returnByValue: boolean = true, timeout: number = 10000): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      
+      const result = await Runtime.evaluate({
+        expression: code,
+        returnByValue,
+        timeout
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`JavaScript execution failed: ${result.exceptionDetails.text}`);
+      }
+      
+      this.logger.logConsole('info', `Executed JavaScript code: ${code.substring(0, 100)}...`, undefined, undefined, 'JS_EVALUATE');
+      
+      return result.result;
+    } catch (error) {
+      console.error(`❌ Failed to execute JavaScript:`, error);
+      this.logger.logError(error as Error, 'js_evaluate_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for element to appear in DOM
+   */
+  async waitForElement(selector: string, timeout: number = 10000, visible: boolean = true): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      const startTime = Date.now();
+      
+      while (Date.now() - startTime < timeout) {
+        const checkScript = `
+          (() => {
+            const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+            if (!element) return { found: false };
+            
+            const isVisible = ${visible} ? element.offsetParent !== null : true;
+            return {
+              found: true,
+              visible: isVisible,
+              ready: ${visible} ? isVisible : true
+            };
+          })()
+        `;
+        
+        const result = await Runtime.evaluate({
+          expression: checkScript,
+          returnByValue: true
+        });
+        
+        if (result.result?.value?.ready) {
+          this.logger.logConsole('info', `Element found: ${selector}`, undefined, undefined, 'WAIT_FOR_ELEMENT');
+          return result.result.value;
+        }
+        
+        // Wait 100ms before checking again
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      throw new Error(`Element not found within ${timeout}ms: ${selector}`);
+    } catch (error) {
+      console.error(`❌ Failed to wait for element ${selector}:`, error);
+      this.logger.logError(error as Error, 'wait_for_element_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for network to become idle
+   */
+  async waitForNetworkIdle(timeout: number = 10000, idleTime: number = 1000): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const startTime = Date.now();
+      let lastNetworkActivity = Date.now();
+      let currentCount = this.networkRequestCount;
+      
+      return new Promise((resolve, reject) => {
+        const checkIdle = () => {
+          const now = Date.now();
+          
+          // Check for timeout
+          if (now - startTime > timeout) {
+            reject(new Error(`Network idle timeout after ${timeout}ms`));
+            return;
+          }
+          
+          // Check if network activity changed
+          if (this.networkRequestCount !== currentCount) {
+            currentCount = this.networkRequestCount;
+            lastNetworkActivity = now;
+          }
+          
+          // Check if network has been idle for required time
+          if (now - lastNetworkActivity >= idleTime && this.networkRequestCount === 0) {
+            this.logger.logConsole('info', `Network idle achieved after ${now - startTime}ms`, undefined, undefined, 'NETWORK_IDLE');
+            resolve({
+              success: true,
+              idleTime: now - lastNetworkActivity,
+              totalTime: now - startTime
+            });
+            return;
+          }
+          
+          // Continue checking
+          setTimeout(checkIdle, 100);
+        };
+        
+        checkIdle();
+      });
+    } catch (error) {
+      console.error(`❌ Failed to wait for network idle:`, error);
+      this.logger.logError(error as Error, 'wait_for_network_idle_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get element bounds/position
+   */
+  async getElementBounds(selector: string): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime } = this.client;
+      
+      const boundsScript = `
+        (() => {
+          const element = document.querySelector('${selector.replace(/'/g, "\\'")}}');
+          if (!element) {
+            throw new Error('Element not found: ${selector}');
+          }
+          
+          const rect = element.getBoundingClientRect();
+          const computedStyle = window.getComputedStyle(element);
+          
+          return {
+            selector: '${selector}',
+            bounds: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left
+            },
+            scroll: {
+              scrollX: window.scrollX,
+              scrollY: window.scrollY
+            },
+            visible: element.offsetParent !== null,
+            display: computedStyle.display,
+            position: computedStyle.position
+          };
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: boundsScript,
+        returnByValue: true
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Get element bounds failed: ${result.exceptionDetails.text}`);
+      }
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to get element bounds for ${selector}:`, error);
+      this.logger.logError(error as Error, 'get_element_bounds_error');
+      throw error;
+    }
+  }
+
+  /**
+   * Get current page information
+   */
+  async getPageInfo(): Promise<any> {
+    if (!this.client || !this.connected) {
+      throw new Error('DevTools not connected');
+    }
+
+    try {
+      const { Runtime, Page } = this.client;
+      
+      const pageInfoScript = `
+        (() => {
+          return {
+            url: window.location.href,
+            title: document.title,
+            readyState: document.readyState,
+            scroll: {
+              x: window.scrollX,
+              y: window.scrollY,
+              maxX: document.documentElement.scrollWidth - window.innerWidth,
+              maxY: document.documentElement.scrollHeight - window.innerHeight
+            },
+            viewport: {
+              width: window.innerWidth,
+              height: window.innerHeight
+            },
+            document: {
+              width: document.documentElement.scrollWidth,
+              height: document.documentElement.scrollHeight
+            },
+            timestamp: Date.now()
+          };
+        })()
+      `;
+      
+      const result = await Runtime.evaluate({
+        expression: pageInfoScript,
+        returnByValue: true
+      });
+      
+      if (result.exceptionDetails) {
+        throw new Error(`Get page info failed: ${result.exceptionDetails.text}`);
+      }
+      
+      return result.result.value;
+    } catch (error) {
+      console.error(`❌ Failed to get page info:`, error);
+      this.logger.logError(error as Error, 'get_page_info_error');
+      throw error;
+    }
   }
 }
