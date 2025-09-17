@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScriptRunner = void 0;
-const child_process_1 = require("child_process");
+const cross_spawn_1 = __importDefault(require("cross-spawn"));
 const tree_kill_1 = __importDefault(require("tree-kill"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
@@ -320,23 +320,29 @@ class ScriptRunner {
                 spawnOptions.env.PATH = `${nodeModulesBin}:${spawnOptions.env.PATH}`;
             }
         }
-        // Spawn the process
-        this.process = (0, child_process_1.spawn)(parsedCommand.command, parsedCommand.args, spawnOptions);
-        // Handle stdout
-        this.process.stdout?.on('data', (data) => {
-            console.log(`[SCRIPT] ${data.toString().trim()}`);
-        });
-        // Handle stderr
-        this.process.stderr?.on('data', (data) => {
-            console.error(`[SCRIPT ERROR] ${data.toString().trim()}`);
-        });
-        // Handle process exit
-        this.process.on('close', (code) => {
-            console.log(`[SCRIPT] Process exited with code ${code}`);
-        });
-        this.process.on('error', (error) => {
-            console.error(`[SCRIPT ERROR] Failed to start script: ${error.message}`);
-        });
+        // Spawn the process using cross-spawn for Windows compatibility
+        this.process = (0, cross_spawn_1.default)(parsedCommand.command, parsedCommand.args, spawnOptions);
+        // Handle stdout with null checks
+        if (this.process && this.process.stdout) {
+            this.process.stdout.on('data', (data) => {
+                console.log(`[SCRIPT] ${data.toString().trim()}`);
+            });
+        }
+        // Handle stderr with null checks
+        if (this.process && this.process.stderr) {
+            this.process.stderr.on('data', (data) => {
+                console.error(`[SCRIPT ERROR] ${data.toString().trim()}`);
+            });
+        }
+        // Handle process exit with null checks
+        if (this.process) {
+            this.process.on('close', (code) => {
+                console.log(`[SCRIPT] Process exited with code ${code}`);
+            });
+            this.process.on('error', (error) => {
+                console.error(`[SCRIPT ERROR] Failed to start script: ${error.message}`);
+            });
+        }
         return this.process;
     }
     stop() {

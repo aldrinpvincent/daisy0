@@ -395,6 +395,9 @@ function setupFileWatcher() {
     console.log('Will start watching once file is created...');
   }
 
+  let debounceTimer = null;
+  let lastFileSize = 0;
+
   const watcher = chokidar.watch(LOG_FILE, {
     persistent: true,
     usePolling: false,
@@ -402,20 +405,42 @@ function setupFileWatcher() {
   });
 
   watcher.on('change', () => {
-    console.log('Log file changed, reloading...');
-    const previousCount = logs.length;
-    loadLogs();
-    
-    // Notify clients of new logs
-    const newLogsCount = logs.length - previousCount;
-    if (newLogsCount > 0) {
-      broadcastToClients({
-        type: 'logs_updated',
-        newCount: newLogsCount,
-        total: logs.length,
-        stats: stats
-      });
+    // Clear existing timer
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
     }
+
+    // Debounce file changes to prevent spam
+    debounceTimer = setTimeout(() => {
+      try {
+        // Check if file actually has new content
+        if (fs.existsSync(LOG_FILE)) {
+          const stats = fs.statSync(LOG_FILE);
+          if (stats.size === lastFileSize) {
+            return; // File size hasn't changed, skip reload
+          }
+          lastFileSize = stats.size;
+        }
+
+        console.log('🔄 Reloading current.log...');
+        const previousCount = logs.length;
+        loadLogs();
+        
+        // Notify clients of new logs
+        const newLogsCount = logs.length - previousCount;
+        if (newLogsCount > 0) {
+          console.log(`✅ Reloaded ${newLogsCount} entries`);
+          broadcastToClients({
+            type: 'logs_updated',
+            newCount: newLogsCount,
+            total: logs.length,
+            stats: stats
+          });
+        }
+      } catch (error) {
+        console.error('Error reloading logs:', error);
+      }
+    }, 1000); // 1 second debounce
   });
 
   watcher.on('error', (error) => {

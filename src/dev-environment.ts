@@ -315,17 +315,31 @@ export class DevEnvironment {
    * Start file synchronization for copy fallback mode
    */
   private startFileSynchronization(): void {
-    // Sync the log file every 500ms to keep current.log updated
+    let lastFileSize = 0;
+    let lastModifiedTime = 0;
+    
+    // Sync the log file every 2 seconds, but only if it has actually changed
     this.fileSyncInterval = setInterval(() => {
       try {
-        if (fs.existsSync(this.logFilePath)) {
+        if (!fs.existsSync(this.logFilePath)) {
+          return;
+        }
+        
+        const stats = fs.statSync(this.logFilePath);
+        const currentSize = stats.size;
+        const currentModified = stats.mtimeMs;
+        
+        // Only copy if the file has actually changed
+        if (currentSize !== lastFileSize || currentModified !== lastModifiedTime) {
           fs.copyFileSync(this.logFilePath, this.symlinkPath);
+          lastFileSize = currentSize;
+          lastModifiedTime = currentModified;
         }
       } catch (error) {
         // Silently handle sync errors to avoid spam
         // This could happen if files are being written to during copy
       }
-    }, 500);
+    }, 2000); // Reduced frequency from 500ms to 2s
   }
 
   /**

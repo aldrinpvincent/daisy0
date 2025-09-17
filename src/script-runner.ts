@@ -1,4 +1,5 @@
-import { spawn, ChildProcess, SpawnOptionsWithoutStdio } from 'child_process';
+import { ChildProcess, SpawnOptionsWithoutStdio } from 'child_process';
+import spawn from 'cross-spawn';
 import treeKill from 'tree-kill';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -323,29 +324,35 @@ export class ScriptRunner {
       }
     }
 
-    // Spawn the process
+    // Spawn the process using cross-spawn for Windows compatibility
     this.process = spawn(parsedCommand.command, parsedCommand.args, spawnOptions);
 
-    // Handle stdout
-    this.process.stdout?.on('data', (data) => {
-      console.log(`[SCRIPT] ${data.toString().trim()}`);
-    });
+    // Handle stdout with null checks
+    if (this.process && this.process.stdout) {
+      this.process.stdout.on('data', (data) => {
+        console.log(`[SCRIPT] ${data.toString().trim()}`);
+      });
+    }
 
-    // Handle stderr
-    this.process.stderr?.on('data', (data) => {
-      console.error(`[SCRIPT ERROR] ${data.toString().trim()}`);
-    });
+    // Handle stderr with null checks
+    if (this.process && this.process.stderr) {
+      this.process.stderr.on('data', (data) => {
+        console.error(`[SCRIPT ERROR] ${data.toString().trim()}`);
+      });
+    }
 
-    // Handle process exit
-    this.process.on('close', (code) => {
-      console.log(`[SCRIPT] Process exited with code ${code}`);
-    });
+    // Handle process exit with null checks
+    if (this.process) {
+      this.process.on('close', (code) => {
+        console.log(`[SCRIPT] Process exited with code ${code}`);
+      });
 
-    this.process.on('error', (error) => {
-      console.error(`[SCRIPT ERROR] Failed to start script: ${error.message}`);
-    });
+      this.process.on('error', (error) => {
+        console.error(`[SCRIPT ERROR] Failed to start script: ${error.message}`);
+      });
+    }
 
-    return this.process;
+    return this.process!;
   }
 
   stop(): void {
