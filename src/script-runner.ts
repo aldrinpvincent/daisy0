@@ -275,6 +275,11 @@ export class ScriptRunner {
       env: { ...process.env }
     };
 
+    // On Windows, always use shell for .cmd files to avoid EINVAL errors
+    if (this.isWindows && (parsedCommand.command.endsWith('.cmd') || parsedCommand.command.endsWith('.bat'))) {
+      spawnOptions.shell = true;
+    }
+    
     // Only use options.shell for simple shell delegation, not when we're explicitly invoking a shell
     if (parsedCommand.useShell) {
       spawnOptions.shell = true;
