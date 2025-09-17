@@ -111,22 +111,6 @@ program
     }
   });
 
-// Add d3k alias command (like dev3000)
-program
-  .command('d3k')
-  .description('🌼 Alias for daisy (like d3k for dev3000)')
-  .option('-s, --script <script>', 'Script to run (auto-detected by default)')
-  .option('-p, --port <port>', 'Web viewer port', '5000')
-  .option('--mcp-port <port>', 'MCP server port', '3684')
-  .option('--chrome-port <port>', 'Chrome debugging port', '9222')
-  .option('--browser <browser>', 'Browser to launch', 'chrome')
-  .option('--servers-only', 'Start only web viewer and MCP server (no Chrome)', false)
-  .option('--debug', 'Enable debug mode with verbose logging', false)
-  .option('--log-level <level>', 'Log verbosity: minimal, standard, verbose', 'standard')
-  .action(async (options) => {
-    // Reuse the main action
-    await program.commands[0].action(options);
-  });
 
 export { program };
 

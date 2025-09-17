@@ -13,9 +13,6 @@ npm install -g daisy
 # Start everything in your project directory
 daisy
 
-# Or use the short alias
-d3k
-
 # With custom script
 daisy --script "yarn dev"
 daisy --script "npm run start:dev"
