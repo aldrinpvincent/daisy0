@@ -5,7 +5,7 @@ export type LogLevel = 'minimal' | 'standard' | 'verbose';
 
 export interface LogEntry {
   timestamp: string;
-  type: 'console' | 'network' | 'error' | 'performance' | 'page' | 'security' | 'runtime';
+  type: 'console' | 'network' | 'error' | 'performance' | 'page' | 'security' | 'runtime' | 'interaction';
   level: 'info' | 'warn' | 'error' | 'debug';
   source: string;
   data: any;
@@ -127,13 +127,17 @@ export class DaisyLogger {
       return;
     }
 
-    // Skip common static assets that create noise
+    // Skip common static assets and development files that create noise
     const staticAssetExtensions = ['.woff2', '.woff', '.ttf', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
     const isStaticAsset = staticAssetExtensions.some(ext => url.toLowerCase().includes(ext));
     const isFontRequest = url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
+    const isJavaScriptFile = headers && headers['content-type'] && 
+                            (headers['content-type'].includes('text/javascript') || 
+                             headers['content-type'].includes('application/javascript'));
+    const isDevFile = url.includes('__x00__') || url.includes('/@id/') || url.includes('hmr-runtime');
     
-    if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest)) {
-      return; // Skip static assets unless in verbose mode
+    if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest || isJavaScriptFile || isDevFile)) {
+      return; // Skip static assets and dev files unless in verbose mode
     }
 
     // Create clean network log structure
@@ -154,11 +158,27 @@ export class DaisyLogger {
       networkData.requestBody = this.filterRequestBody(requestData);
     }
 
-    // Add response body/data if present (only for non-static assets and in verbose mode)
-    if (responseData && this.logLevel === 'verbose') {
+    // Add response body for API calls (JSON responses are important for debugging)
+    if (responseData) {
       const responseBody = this.extractResponseBody(responseData);
-      if (responseBody && typeof responseBody === 'string' && responseBody.length < 500) {
-        networkData.responseBody = responseBody.substring(0, 200) + (responseBody.length > 200 ? '...' : '');
+      if (responseBody) {
+        // Always include JSON API responses (they're crucial for debugging)
+        const isJsonResponse = headers && headers['content-type'] && 
+                              headers['content-type'].includes('application/json');
+        
+        if (isJsonResponse || this.logLevel === 'verbose') {
+          // For JSON responses, include more content but still limit size
+          const maxLength = isJsonResponse ? 1000 : 200;
+          if (typeof responseBody === 'string') {
+            networkData.responseBody = responseBody.length > maxLength ? 
+              responseBody.substring(0, maxLength) + '...[truncated]' : responseBody;
+          } else {
+            // For parsed JSON objects, stringify and limit
+            const jsonString = JSON.stringify(responseBody, null, 2);
+            networkData.responseBody = jsonString.length > maxLength ? 
+              jsonString.substring(0, maxLength) + '...[truncated]' : responseBody;
+          }
+        }
       }
     }
 
@@ -213,10 +233,20 @@ export class DaisyLogger {
     }
 
     // Simplify page event data to reduce noise
-    const simplifiedData = eventType === 'navigation' ? { url: url || data.frame?.url } : 
-                          eventType === 'load' ? { event: 'page loaded' } :
-                          eventType === 'domContentLoaded' ? { event: 'DOM ready' } :
-                          { event: eventType };
+    const simplifiedData = eventType === 'navigation' ? { 
+      event: 'navigation', 
+      url: url || data.frame?.url 
+    } : 
+    eventType === 'load' ? { event: 'page_loaded' } :
+    eventType === 'domContentLoaded' ? { event: 'dom_ready' } :
+    eventType === 'documentUpdated' ? { event: 'dom_updated' } :
+    { event: eventType };
+
+    // Skip noisy page events in standard mode
+    if (this.logLevel !== 'verbose' && 
+        ['dom_updated', 'dom_ready'].includes(simplifiedData.event)) {
+      return;
+    }
 
     this.log({
       timestamp: new Date().toISOString(),
@@ -236,16 +266,42 @@ export class DaisyLogger {
       return;
     }
 
+    // Skip noisy interactions - only log meaningful user actions
+    if (interactionType === 'KEY' || interactionType === 'SCROLL') {
+      return; // Skip key presses and scroll events
+    }
+
+    // Only log CLICK events for now (most meaningful for debugging)
+    if (interactionType !== 'CLICK') {
+      return;
+    }
+
+    // Clean up click data - focus on what element was clicked
+    const cleanData: any = {
+      type: 'CLICK',
+      action: `Clicked ${data.element?.tag || 'element'}`
+    };
+
+    if (data.element) {
+      cleanData.element = {
+        selector: data.element.selector,
+        text: data.element.text?.substring(0, 30) || '', // Shorter text
+        tag: data.element.tag
+      };
+      
+      // Create a more readable message
+      const elementDesc = data.element.text ? 
+        `"${data.element.text.substring(0, 20)}"` : 
+        data.element.selector;
+      cleanData.action = `Clicked ${data.element.tag}: ${elementDesc}`;
+    }
+
     this.log({
       timestamp: new Date().toISOString(),
-      type: 'page',
+      type: 'interaction',
       level: 'info',
-      source: 'user_interaction',
-      data: {
-        interaction: interactionType,
-        message: message,
-        details: data
-      }
+      source: 'user_action',
+      data: cleanData
     });
   }
 

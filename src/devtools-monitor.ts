@@ -134,26 +134,42 @@ export class DevToolsMonitor {
       Network.responseReceived(async (params: any) => {
         const requestData = this.pendingRequests.get(params.requestId);
 
-        try {
-          // Get the actual response body content
-          let responseBody = null;
-          try {
-            const responseBodyResult = await Network.getResponseBody({
-              requestId: params.requestId
-            });
-            responseBody = responseBodyResult.body;
-
-            // Try to parse JSON responses
-            if (params.response.mimeType === 'application/json' && responseBody) {
-              try {
-                responseBody = JSON.parse(responseBody);
-              } catch (e) {
-                // Keep as string if not valid JSON
+        // Helper function to get response body with retry
+        const getResponseBodyWithRetry = async (requestId: string, maxRetries = 3): Promise<any> => {
+          for (let i = 0; i < maxRetries; i++) {
+            try {
+              // Add small delay for first retry to let response body become available
+              if (i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
               }
+              
+              const responseBodyResult = await Network.getResponseBody({ requestId });
+              let responseBody = responseBodyResult.body;
+
+              // Try to parse JSON responses
+              if (params.response.mimeType === 'application/json' && responseBody) {
+                try {
+                  responseBody = JSON.parse(responseBody);
+                } catch (e) {
+                  // Keep as string if not valid JSON
+                }
+              }
+              
+              return responseBody;
+            } catch (e) {
+              if (i === maxRetries - 1) {
+                // Last retry failed, return null
+                return null;
+              }
+              // Continue to next retry
             }
-          } catch (e) {
-            // Response body not available, skip
           }
+          return null;
+        };
+
+        try {
+          // Get the actual response body content with retry
+          const responseBody = await getResponseBodyWithRetry(params.requestId);
 
           // Log the complete request/response
           this.logger.logNetwork(
