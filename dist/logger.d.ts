@@ -13,7 +13,6 @@ export interface LogEntry {
     };
 }
 export declare class DaisyLogger {
-    private writeStream;
     private logFile;
     private logLevel;
     constructor(logFile: string, logLevel?: LogLevel);
@@ -25,6 +24,7 @@ export declare class DaisyLogger {
     logError(error: any, source?: string, stackTrace?: string): void;
     logPerformance(name: string, data: any): void;
     logPageEvent(eventType: string, data: any, url?: string): void;
+    logInteraction(interactionType: string, data: any, message: string): void;
     private mapConsoleLevel;
     private shouldSkipLog;
     private filterConsoleArguments;

@@ -48,50 +48,20 @@ export class DevEnvironment {
    * Returns main log file, symlink path, screenshots directory, and symlink status
    */
   private createPersistentLogFile(): { logFilePath: string; symlinkPath: string; screenshotsDir: string; isUsingSymlink: boolean } {
-    const tempDir = os.tmpdir();
-    const daisyDir = path.join(tempDir, 'daisy');
+    // Use desktop directory instead of temp for better file access
+    const daisyDir = 'C:\\Users\\aldvincent\\Desktop\\aldrin\\apps\\daisy_new\\logs';
     
     // Ensure daisy temp directory exists
     if (!fs.existsSync(daisyDir)) {
       fs.mkdirSync(daisyDir, { recursive: true });
     }
     
-    // Create session-specific log file
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const sessionId = `${timestamp}-${process.pid}`;
-    const logFilePath = path.join(daisyDir, `daisy-${sessionId}.log`);
+    // Use a simple direct log file without symlinks to avoid Windows issues
+    const logFilePath = path.join(daisyDir, 'daisy-current.log');
+    const symlinkPath = logFilePath; // Same file, no symlink needed
+    const isUsingSymlink = false;
     
-    // Create symlink to current session (like dev3000)
-    const symlinkPath = path.join(daisyDir, 'current.log');
-    
-    // Remove existing symlink if it exists
-    if (fs.existsSync(symlinkPath)) {
-      try {
-        fs.unlinkSync(symlinkPath);
-      } catch (error) {
-        // Ignore errors removing old symlink
-      }
-    }
-    
-    // Try to create symlink first, fall back to copy on Windows
-    let isUsingSymlink = false;
-    try {
-      fs.symlinkSync(logFilePath, symlinkPath);
-      isUsingSymlink = true;
-      console.log(`   ✅ Created symlink: ${symlinkPath} -> ${logFilePath}`);
-    } catch (error) {
-      // Symlink failed, likely on Windows without admin privileges
-      console.warn('⚠️  Symlink creation failed, using file copy fallback for Windows compatibility');
-      
-      try {
-        // Create initial empty file that will be synchronized later
-        fs.writeFileSync(symlinkPath, '');
-        console.log(`   ✅ Created file copy: ${symlinkPath}`);
-      } catch (copyError) {
-        console.error('❌ Failed to create file copy fallback:', copyError);
-        // Still return the paths so the application can continue
-      }
-    }
+    console.log(`   📝 Using direct log file: ${logFilePath}`);
     
     // Create screenshots directory
     const screenshotsDir = path.join(daisyDir, 'screenshots');
@@ -128,7 +98,7 @@ export class DevEnvironment {
         await this.startDevToolsMonitoring();
       }
       
-      await this.startWebViewer();
+      // await this.startWebViewer();
       await this.startMCPServer();
       
       this.setupGracefulShutdown();

@@ -18,15 +18,14 @@ export interface LogEntry {
 }
 
 export class DaisyLogger {
-  private writeStream: fs.WriteStream;
   private logFile: string;
   private logLevel: LogLevel;
 
   constructor(logFile: string, logLevel: LogLevel = 'standard') {
     this.logFile = logFile;
     this.logLevel = logLevel;
-    this.writeStream = fs.createWriteStream(logFile, { flags: 'w' });
-    
+
+    // Use synchronous writes only to avoid file locking issues on Windows
     // Write initial header for LLM readability
     this.writeInitialHeader();
   }
@@ -51,8 +50,14 @@ export class DaisyLogger {
         context: "Additional contextual information for debugging"
       }
     };
-    
-    this.writeRawLine(`# Daisy Debug Session\n${JSON.stringify(header, null, 2)}\n---\n`);
+
+    // Write header synchronously to create the file
+    try {
+      fs.writeFileSync(this.logFile, `# Daisy Debug Session\n${JSON.stringify(header, null, 2)}\n---\n`);
+
+    } catch (err) {
+      console.error('❌ Failed to write initial header:', err);
+    }
   }
 
   log(entry: LogEntry) {
@@ -61,7 +66,26 @@ export class DaisyLogger {
   }
 
   private writeRawLine(line: string) {
-    this.writeStream.write(line);
+    // Retry logic for Windows file locking issues
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        fs.appendFileSync(this.logFile, line);
+        break;
+      } catch (err: any) {
+        if (err.code === 'EBUSY' && retries > 1) {
+          retries--;
+          // Small delay before retry
+          const start = Date.now();
+          while (Date.now() - start < 10) {
+            // Busy wait for 10ms
+          }
+        } else {
+          console.error('❌ Failed to write to log file:', err);
+          break;
+        }
+      }
+    }
   }
 
   logConsole(level: string, text: string, args?: any[], stackTrace?: any, url?: string) {
@@ -103,6 +127,15 @@ export class DaisyLogger {
       return;
     }
 
+    // Skip common static assets that create noise
+    const staticAssetExtensions = ['.woff2', '.woff', '.ttf', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
+    const isStaticAsset = staticAssetExtensions.some(ext => url.toLowerCase().includes(ext));
+    const isFontRequest = url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
+    
+    if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest)) {
+      return; // Skip static assets unless in verbose mode
+    }
+
     // Create clean network log structure
     const networkData: any = {
       method,
@@ -121,11 +154,11 @@ export class DaisyLogger {
       networkData.requestBody = this.filterRequestBody(requestData);
     }
 
-    // Add response body/data if present
-    if (responseData) {
+    // Add response body/data if present (only for non-static assets and in verbose mode)
+    if (responseData && this.logLevel === 'verbose') {
       const responseBody = this.extractResponseBody(responseData);
-      if (responseBody) {
-        networkData.responseBody = responseBody;
+      if (responseBody && typeof responseBody === 'string' && responseBody.length < 500) {
+        networkData.responseBody = responseBody.substring(0, 200) + (responseBody.length > 200 ? '...' : '');
       }
     }
 
@@ -179,17 +212,39 @@ export class DaisyLogger {
       return;
     }
 
+    // Simplify page event data to reduce noise
+    const simplifiedData = eventType === 'navigation' ? { url: url || data.frame?.url } : 
+                          eventType === 'load' ? { event: 'page loaded' } :
+                          eventType === 'domContentLoaded' ? { event: 'DOM ready' } :
+                          { event: eventType };
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'page',
       level: 'info',
       source: 'page_events',
-      data: {
-        event: eventType,
-        details: data
-      },
+      data: simplifiedData,
       context: {
         url
+      }
+    });
+  }
+
+  logInteraction(interactionType: string, data: any, message: string) {
+    // Apply log level filtering to interaction events
+    if (this.shouldSkipLog('page', 'info')) {
+      return;
+    }
+
+    this.log({
+      timestamp: new Date().toISOString(),
+      type: 'page',
+      level: 'info',
+      source: 'user_interaction',
+      data: {
+        interaction: interactionType,
+        message: message,
+        details: data
       }
     });
   }
@@ -211,7 +266,7 @@ export class DaisyLogger {
   // Filtering methods based on log level
   private shouldSkipLog(logType: string, level: string): boolean {
     if (this.logLevel === 'verbose') return false;
-    
+
     if (this.logLevel === 'minimal') {
       // For minimal: only show errors and warnings
       if (!(level === 'error' || level === 'warn')) {
@@ -223,10 +278,10 @@ export class DaisyLogger {
         return true;
       }
     }
-    
+
     // Standard level - skip debug logs and non-essential event types
     if (level === 'debug') return true;
-    
+
     // In standard mode, skip verbose performance/page events unless they're errors
     if (this.logLevel === 'standard' && level === 'info') {
       const skipTypesStandard = ['performance'];
@@ -234,13 +289,13 @@ export class DaisyLogger {
         return true;
       }
     }
-    
+
     return false;
   }
 
   private filterConsoleArguments(args?: any[]): any[] {
     if (!args || this.logLevel === 'verbose') return args || [];
-    
+
     return args.map(arg => {
       if (typeof arg === 'object' && arg !== null) {
         // Simplify object previews
@@ -261,9 +316,9 @@ export class DaisyLogger {
 
   private filterStackTrace(stackTrace?: any): any {
     if (!stackTrace || this.logLevel === 'verbose') return stackTrace;
-    
+
     if (this.logLevel === 'minimal') return undefined;
-    
+
     // Standard level - keep only essential stack frames (first 3)
     if (stackTrace.callFrames) {
       return {
@@ -275,18 +330,18 @@ export class DaisyLogger {
         }))
       };
     }
-    
+
     return stackTrace;
   }
 
   private filterHeaders(headers: any): any {
     if (!headers || this.logLevel === 'verbose') return headers;
-    
+
     if (this.logLevel === 'minimal') {
       // Only keep essential headers
       const essentialHeaders: any = {};
       const keepHeaders = ['content-type', 'authorization', 'x-api-key', 'user-agent'];
-      
+
       for (const key of keepHeaders) {
         if (headers[key.toLowerCase()]) {
           essentialHeaders[key] = headers[key.toLowerCase()];
@@ -294,88 +349,87 @@ export class DaisyLogger {
       }
       return essentialHeaders;
     }
-    
+
     // Standard level - remove verbose headers but keep useful ones
     const filteredHeaders: any = {};
     const skipHeaders = [
       'cf-ray', 'cf-cache-status', 'reporting-endpoints', 'nel', 'report-to',
       'x-ratelimit-', 'alt-svc', 'via', 'x-powered-by', 'server'
     ];
-    
+
     for (const [key, value] of Object.entries(headers)) {
       const shouldSkip = skipHeaders.some(skip => key.toLowerCase().includes(skip));
       if (!shouldSkip) {
         filteredHeaders[key] = value;
       }
     }
-    
+
     return filteredHeaders;
   }
 
   private filterRequestBody(body?: any): any {
     if (!body || this.logLevel === 'verbose') return body;
-    
+
     if (this.logLevel === 'minimal') return '[Request Body]';
-    
+
     // Standard level - truncate large bodies
     if (typeof body === 'string' && body.length > 1000) {
       return body.substring(0, 1000) + '... [truncated]';
     }
-    
+
     return body;
   }
 
   private getEssentialHeaders(headers: any): any {
     if (!headers) return {};
-    
+
     // Only keep the most essential headers for debugging
     const essentialHeaders: any = {};
     const keepHeaders = ['content-type', 'content-length'];
-    
+
     for (const [key, value] of Object.entries(headers)) {
       if (keepHeaders.includes(key.toLowerCase())) {
         essentialHeaders[key.toLowerCase()] = value;
       }
     }
-    
+
     return essentialHeaders;
   }
 
   private extractResponseBody(responseData?: any): any {
     if (!responseData) return null;
-    
+
     // If responseData is already the body content (from DevTools), return it
     if (typeof responseData === 'string' || typeof responseData === 'object') {
       return responseData;
     }
-    
+
     return null;
   }
 
   private filterResponseBody(responseData?: any): any {
     if (!responseData || this.logLevel === 'verbose') return responseData;
-    
+
     // Remove verbose response data that's not useful for debugging
     const filtered: any = {};
-    
+
     if (responseData.url) filtered.url = responseData.url;
     if (responseData.status) filtered.status = responseData.status;
     if (responseData.statusText) filtered.statusText = responseData.statusText;
     if (responseData.mimeType) filtered.mimeType = responseData.mimeType;
-    
+
     // Remove timing, security details, and other verbose data
     if (this.logLevel === 'standard') {
       if (responseData.headers) {
         filtered.headers = this.filterHeaders(responseData.headers);
       }
     }
-    
+
     // Skip all the verbose timing, security, certificate data
     return filtered;
   }
 
   close() {
     this.writeRawLine(`\n---\n# Session ended: ${new Date().toISOString()}\n`);
-    this.writeStream.end();
   }
 }

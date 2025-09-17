@@ -39,7 +39,7 @@ class DaisyLogger {
     constructor(logFile, logLevel = 'standard') {
         this.logFile = logFile;
         this.logLevel = logLevel;
-        this.writeStream = fs.createWriteStream(logFile, { flags: 'w' });
+        // Use synchronous writes only to avoid file locking issues on Windows
         // Write initial header for LLM readability
         this.writeInitialHeader();
     }
@@ -63,14 +63,41 @@ class DaisyLogger {
                 context: "Additional contextual information for debugging"
             }
         };
-        this.writeRawLine(`# Daisy Debug Session\n${JSON.stringify(header, null, 2)}\n---\n`);
+        // Write header synchronously to create the file
+        try {
+            fs.writeFileSync(this.logFile, `# Daisy Debug Session\n${JSON.stringify(header, null, 2)}\n---\n`);
+        }
+        catch (err) {
+            console.error('❌ Failed to write initial header:', err);
+        }
     }
     log(entry) {
         const logLine = JSON.stringify(entry, null, 2);
         this.writeRawLine(`${logLine}\n`);
     }
     writeRawLine(line) {
-        this.writeStream.write(line);
+        // Retry logic for Windows file locking issues
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                fs.appendFileSync(this.logFile, line);
+                break;
+            }
+            catch (err) {
+                if (err.code === 'EBUSY' && retries > 1) {
+                    retries--;
+                    // Small delay before retry
+                    const start = Date.now();
+                    while (Date.now() - start < 10) {
+                        // Busy wait for 10ms
+                    }
+                }
+                else {
+                    console.error('❌ Failed to write to log file:', err);
+                    break;
+                }
+            }
+        }
     }
     logConsole(level, text, args, stackTrace, url) {
         // Filter console output based on log level
@@ -105,6 +132,13 @@ class DaisyLogger {
         if (this.shouldSkipLog('network', statusCode >= 400 ? 'error' : 'info')) {
             return;
         }
+        // Skip common static assets that create noise
+        const staticAssetExtensions = ['.woff2', '.woff', '.ttf', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
+        const isStaticAsset = staticAssetExtensions.some(ext => url.toLowerCase().includes(ext));
+        const isFontRequest = url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
+        if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest)) {
+            return; // Skip static assets unless in verbose mode
+        }
         // Create clean network log structure
         const networkData = {
             method,
@@ -120,11 +154,11 @@ class DaisyLogger {
         if (requestData) {
             networkData.requestBody = this.filterRequestBody(requestData);
         }
-        // Add response body/data if present
-        if (responseData) {
+        // Add response body/data if present (only for non-static assets and in verbose mode)
+        if (responseData && this.logLevel === 'verbose') {
             const responseBody = this.extractResponseBody(responseData);
-            if (responseBody) {
-                networkData.responseBody = responseBody;
+            if (responseBody && typeof responseBody === 'string' && responseBody.length < 500) {
+                networkData.responseBody = responseBody.substring(0, 200) + (responseBody.length > 200 ? '...' : '');
             }
         }
         this.log({
@@ -172,17 +206,36 @@ class DaisyLogger {
         if (this.shouldSkipLog('page', 'info')) {
             return;
         }
+        // Simplify page event data to reduce noise
+        const simplifiedData = eventType === 'navigation' ? { url: url || data.frame?.url } :
+            eventType === 'load' ? { event: 'page loaded' } :
+                eventType === 'domContentLoaded' ? { event: 'DOM ready' } :
+                    { event: eventType };
         this.log({
             timestamp: new Date().toISOString(),
             type: 'page',
             level: 'info',
             source: 'page_events',
-            data: {
-                event: eventType,
-                details: data
-            },
+            data: simplifiedData,
             context: {
                 url
+            }
+        });
+    }
+    logInteraction(interactionType, data, message) {
+        // Apply log level filtering to interaction events
+        if (this.shouldSkipLog('page', 'info')) {
+            return;
+        }
+        this.log({
+            timestamp: new Date().toISOString(),
+            type: 'page',
+            level: 'info',
+            source: 'user_interaction',
+            data: {
+                interaction: interactionType,
+                message: message,
+                details: data
             }
         });
     }
@@ -349,7 +402,6 @@ class DaisyLogger {
     }
     close() {
         this.writeRawLine(`\n---\n# Session ended: ${new Date().toISOString()}\n`);
-        this.writeStream.end();
     }
 }
 exports.DaisyLogger = DaisyLogger;
