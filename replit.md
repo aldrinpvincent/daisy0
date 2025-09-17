@@ -1,29 +1,58 @@
 # Overview
 
-Daisy is a command-line debugging tool that streams browser debugging data via the Chrome DevTools Protocol. **Currently optimized for local debugging environments.** It launches a headless Chrome instance with remote debugging enabled, monitors various browser events (console logs, network requests, errors, performance metrics), and streams this debugging data to structured log files. The tool is designed to help developers debug applications by providing comprehensive real-time insights into browser behavior during script execution.
+**Daisy is a unified browser debugging tool that provides a dev3000-like single-command experience.** It automatically starts Chrome debugging, a web viewer interface, and an MCP server for AI assistant integration - all with one simple command. Daisy streams comprehensive browser debugging data via the Chrome DevTools Protocol, monitors browser events (console logs, network requests, errors, performance metrics), and provides real-time insights through both a web interface and structured logs.
 
-## Usage
+## Quick Start
 
-To use daisy in your frontend application:
+**Like dev3000, daisy starts everything with one command:**
 
 ```bash
-# Build the CLI tool
-npm run build
+# Install globally (recommended)
+npm install -g daisy
 
-# Run daisy with your script (default: standard log level)
-node dist/index.js --script "npm run dev"
+# Start everything in your project directory
+daisy
 
-# With minimal logging (errors/warnings only)
-node dist/index.js --script "npm run dev" --log-level minimal --log-file minimal-debug.log
+# Or use the short alias
+d3k
 
-# With full verbose logging
-node dist/index.js --script "npm run dev" --log-level verbose --log-file verbose-debug.log
-
-# With custom options
-node dist/index.js --script "yarn start" --port 9223 --log-file custom-debug.log --log-level standard
+# With custom script
+daisy --script "yarn dev"
+daisy --script "npm run start:dev"
 ```
 
-The tool will create a structured JSON log file containing all browser debugging data in real-time, formatted for easy analysis by LLMs and debugging tools.
+**What daisy starts automatically:**
+- 🌐 **Chrome debugging** (headless with DevTools Protocol)  
+- 📊 **Web viewer** on http://localhost:5000 (visual log interface)
+- 🤖 **MCP server** (stdio transport for AI assistants)
+- 📝 **Centralized logging** to `/tmp/daisy/current.log`
+- 📸 **Automatic screenshots** on errors
+
+## Auto-Detection Features
+
+Daisy automatically detects your development environment:
+- **Package manager**: npm, yarn, or pnpm (based on lockfiles)
+- **Development script**: Tries `dev`, `start:dev`, `develop`, `serve`, `start` in order
+- **Project type**: Configures optimal settings for your stack
+
+## Advanced Usage
+
+```bash
+# Minimal logging (errors only)
+daisy --log-level minimal
+
+# Verbose debugging with all details  
+daisy --log-level verbose
+
+# Custom ports
+daisy --port 3000 --chrome-port 9223
+
+# Servers only (no Chrome launching)
+daisy --servers-only
+
+# Debug mode with verbose console output
+daisy --debug
+```
 
 ## MCP Server for AI Assistants
 
