@@ -6,6 +6,7 @@ import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import treeKill from 'tree-kill';
 
 export interface DevEnvironmentConfig {
   script: string;
@@ -399,15 +400,41 @@ export class DevEnvironment {
       }
       
       // Stop web viewer
-      if (this.webViewerProcess) {
-        this.webViewerProcess.kill('SIGTERM');
-        console.log('   ✅ Web viewer stopped');
+      if (this.webViewerProcess && this.webViewerProcess.pid) {
+        await new Promise<void>((resolve) => {
+          treeKill(this.webViewerProcess!.pid!, 'SIGTERM', (err?: Error) => {
+            if (err) {
+              console.warn('   ⚠️ Warning: Failed to kill web viewer process tree:', err.message);
+              // Fallback to direct kill
+              try {
+                this.webViewerProcess?.kill('SIGTERM');
+              } catch (fallbackErr) {
+                console.warn('   ⚠️ Warning: Fallback web viewer kill also failed:', fallbackErr);
+              }
+            }
+            console.log('   ✅ Web viewer stopped');
+            resolve();
+          });
+        });
       }
       
       // Stop MCP server
-      if (this.mcpServerProcess) {
-        this.mcpServerProcess.kill('SIGTERM');
-        console.log('   ✅ MCP server stopped');
+      if (this.mcpServerProcess && this.mcpServerProcess.pid) {
+        await new Promise<void>((resolve) => {
+          treeKill(this.mcpServerProcess!.pid!, 'SIGTERM', (err?: Error) => {
+            if (err) {
+              console.warn('   ⚠️ Warning: Failed to kill MCP server process tree:', err.message);
+              // Fallback to direct kill
+              try {
+                this.mcpServerProcess?.kill('SIGTERM');
+              } catch (fallbackErr) {
+                console.warn('   ⚠️ Warning: Fallback MCP server kill also failed:', fallbackErr);
+              }
+            }
+            console.log('   ✅ MCP server stopped');
+            resolve();
+          });
+        });
       }
       
       // Close logger
