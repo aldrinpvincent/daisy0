@@ -29,20 +29,23 @@ export class DevEnvironment {
   private logFilePath: string;
   private symlinkPath: string;
   private screenshotsDir: string;
+  private isUsingSymlink: boolean;
+  private fileSyncInterval?: NodeJS.Timeout;
 
   constructor(config: DevEnvironmentConfig) {
     this.config = config;
-    const { logFilePath, symlinkPath, screenshotsDir } = this.createPersistentLogFile();
+    const { logFilePath, symlinkPath, screenshotsDir, isUsingSymlink } = this.createPersistentLogFile();
     this.logFilePath = logFilePath;
     this.symlinkPath = symlinkPath;
     this.screenshotsDir = screenshotsDir;
+    this.isUsingSymlink = isUsingSymlink;
   }
 
   /**
    * Creates persistent log file in temp directory (like dev3000)
-   * Returns main log file, symlink path, and screenshots directory
+   * Returns main log file, symlink path, screenshots directory, and symlink status
    */
-  private createPersistentLogFile(): { logFilePath: string; symlinkPath: string; screenshotsDir: string } {
+  private createPersistentLogFile(): { logFilePath: string; symlinkPath: string; screenshotsDir: string; isUsingSymlink: boolean } {
     const tempDir = os.tmpdir();
     const daisyDir = path.join(tempDir, 'daisy');
     
@@ -68,11 +71,24 @@ export class DevEnvironment {
       }
     }
     
-    // Create new symlink
+    // Try to create symlink first, fall back to copy on Windows
+    let isUsingSymlink = false;
     try {
       fs.symlinkSync(logFilePath, symlinkPath);
+      isUsingSymlink = true;
+      console.log(`   ✅ Created symlink: ${symlinkPath} -> ${logFilePath}`);
     } catch (error) {
-      console.warn('Warning: Could not create symlink to current log file');
+      // Symlink failed, likely on Windows without admin privileges
+      console.warn('⚠️  Symlink creation failed, using file copy fallback for Windows compatibility');
+      
+      try {
+        // Create initial empty file that will be synchronized later
+        fs.writeFileSync(symlinkPath, '');
+        console.log(`   ✅ Created file copy: ${symlinkPath}`);
+      } catch (copyError) {
+        console.error('❌ Failed to create file copy fallback:', copyError);
+        // Still return the paths so the application can continue
+      }
     }
     
     // Create screenshots directory
@@ -81,7 +97,7 @@ export class DevEnvironment {
       fs.mkdirSync(screenshotsDir, { recursive: true });
     }
     
-    return { logFilePath, symlinkPath, screenshotsDir };
+    return { logFilePath, symlinkPath, screenshotsDir, isUsingSymlink };
   }
 
   /**
@@ -94,7 +110,14 @@ export class DevEnvironment {
     this.logger = new DaisyLogger(this.logFilePath, this.config.logLevel as LogLevel);
     
     console.log(`📝 Centralized logging: ${this.symlinkPath}`);
-    console.log(`📸 Screenshots: ${this.screenshotsDir}\n`);
+    console.log(`📸 Screenshots: ${this.screenshotsDir}`);
+    
+    // Start file synchronization if using copy fallback
+    if (!this.isUsingSymlink) {
+      this.startFileSynchronization();
+      console.log('   🔄 File synchronization active (Windows copy mode)');
+    }
+    console.log('');
     
     try {
       // Start services based on configuration
@@ -176,7 +199,7 @@ export class DevEnvironment {
     
     this.webViewerProcess = spawn('node', [
       webViewerPath,
-      '--log-file', this.logFilePath,
+      '--log-file', this.symlinkPath,
       '--screenshots-dir', this.screenshotsDir,
       '--port', this.config.webViewerPort.toString(),
       '--host', '0.0.0.0'
@@ -231,7 +254,7 @@ export class DevEnvironment {
     
     this.mcpServerProcess = spawn('node', [
       mcpServerPath,
-      '--log-file', this.logFilePath,
+      '--log-file', this.symlinkPath,
       '--screenshots-dir', this.screenshotsDir,
       '--watch',
       '--transport', 'stdio'
@@ -279,6 +302,23 @@ export class DevEnvironment {
         }
       }
     }
+  }
+
+  /**
+   * Start file synchronization for copy fallback mode
+   */
+  private startFileSynchronization(): void {
+    // Sync the log file every 500ms to keep current.log updated
+    this.fileSyncInterval = setInterval(() => {
+      try {
+        if (fs.existsSync(this.logFilePath)) {
+          fs.copyFileSync(this.logFilePath, this.symlinkPath);
+        }
+      } catch (error) {
+        // Silently handle sync errors to avoid spam
+        // This could happen if files are being written to during copy
+      }
+    }, 500);
   }
 
   /**
@@ -331,6 +371,12 @@ export class DevEnvironment {
     // Clear keep alive interval
     if ((this as any).keepAliveInterval) {
       clearInterval((this as any).keepAliveInterval);
+    }
+    
+    // Clear file synchronization interval
+    if (this.fileSyncInterval) {
+      clearInterval(this.fileSyncInterval);
+      console.log('   ✅ File synchronization stopped');
     }
     
     try {
