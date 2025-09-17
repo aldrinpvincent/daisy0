@@ -263,6 +263,12 @@ class ScriptRunner {
     }
     run(script) {
         const parsedCommand = this.parseScript(script);
+        // Debug output for Windows troubleshooting
+        console.log(`[DEBUG] Script: "${script}"`);
+        console.log(`[DEBUG] Parsed command: "${parsedCommand.command}"`);
+        console.log(`[DEBUG] Parsed args:`, parsedCommand.args);
+        console.log(`[DEBUG] Use shell: ${parsedCommand.useShell}`);
+        console.log(`[DEBUG] Shell type: ${parsedCommand.shellType || 'none'}`);
         // Build spawn options
         const spawnOptions = {
             cwd: process.cwd(),
