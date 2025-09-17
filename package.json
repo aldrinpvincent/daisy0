@@ -2,9 +2,9 @@
   "name": "daisy",
   "version": "1.0.0",
   "description": "🌼 Unified browser debugging tool - starts everything with one command (like dev3000)",
-  "main": "dist/cli.js",
+  "main": "dist/index.js",
   "bin": {
-    "daisy": "./dist/cli.js"
+    "daisy": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc && npm run build:mcp",
