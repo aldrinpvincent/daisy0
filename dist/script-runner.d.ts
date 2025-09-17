@@ -3,7 +3,7 @@ export declare class ScriptRunner {
     private process;
     private readonly isWindows;
     /**
-     * Detects the preferred shell on Windows
+     * Detects the preferred shell on Windows and returns both shell path and type
      */
     private getWindowsShell;
     /**

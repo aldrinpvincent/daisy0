@@ -7,6 +7,7 @@ interface ParsedCommand {
   command: string;
   args: string[];
   useShell: boolean;
+  shellType?: 'pwsh' | 'powershell' | 'cmd' | 'sh';
 }
 
 export class ScriptRunner {
@@ -14,28 +15,34 @@ export class ScriptRunner {
   private readonly isWindows = process.platform === 'win32';
 
   /**
-   * Detects the preferred shell on Windows
+   * Detects the preferred shell on Windows and returns both shell path and type
    */
-  private getWindowsShell(): string {
-    // Check for PowerShell first (preferred on modern Windows)
-    if (process.env.PSModulePath) {
-      return 'powershell.exe';
-    }
-    
-    // Check for Windows PowerShell executable
+  private getWindowsShell(): { shell: string; type: 'pwsh' | 'powershell' | 'cmd' } {
+    // Prefer pwsh.exe (PowerShell Core) first
     const pwshPaths = [
       'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
-      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+      'C:\\Program Files\\PowerShell\\6\\pwsh.exe'
     ];
     
     for (const pwshPath of pwshPaths) {
       if (fs.existsSync(pwshPath)) {
-        return pwshPath;
+        return { shell: pwshPath, type: 'pwsh' };
       }
     }
     
+    // Check for Windows PowerShell 5.x
+    const powershellPath = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+    if (fs.existsSync(powershellPath)) {
+      return { shell: powershellPath, type: 'powershell' };
+    }
+    
+    // Check PSModulePath environment variable (indicates PowerShell is available)
+    if (process.env.PSModulePath) {
+      return { shell: 'powershell.exe', type: 'powershell' };
+    }
+    
     // Fallback to cmd.exe
-    return 'cmd.exe';
+    return { shell: 'cmd.exe', type: 'cmd' };
   }
 
   /**
@@ -119,11 +126,37 @@ export class ScriptRunner {
     
     // Check if we need shell execution for complex commands
     if (this.requiresShell(trimmed)) {
-      return {
-        command: this.isWindows ? this.getWindowsShell() : '/bin/sh',
-        args: this.isWindows ? ['-Command', trimmed] : ['-c', trimmed],
-        useShell: true
-      };
+      if (this.isWindows) {
+        const { shell, type } = this.getWindowsShell();
+        let args: string[];
+        
+        // Use appropriate arguments for each shell type
+        switch (type) {
+          case 'pwsh':
+          case 'powershell':
+            args = ['-Command', trimmed];
+            break;
+          case 'cmd':
+            args = ['/d', '/s', '/c', trimmed];
+            break;
+          default:
+            args = ['/c', trimmed];
+        }
+        
+        return {
+          command: shell,
+          args,
+          useShell: false, // Don't use options.shell when we're explicitly invoking a shell
+          shellType: type
+        };
+      } else {
+        return {
+          command: '/bin/sh',
+          args: ['-c', trimmed],
+          useShell: false, // Don't use options.shell when we're explicitly invoking a shell
+          shellType: 'sh'
+        };
+      }
     }
 
     // Parse arguments properly
@@ -164,20 +197,8 @@ export class ScriptRunner {
       return { command: localBin, args, useShell: false };
     }
 
-    // For other commands, use as-is
-    if (this.isWindows && !path.extname(command) && !path.isAbsolute(command)) {
-      // On Windows, try common extensions
-      const extensions = ['.exe', '.cmd', '.bat'];
-      for (const ext of extensions) {
-        const withExt = command + ext;
-        // Don't check filesystem here, let spawn handle it
-        if (ext === '.exe') {
-          command = withExt;
-          break;
-        }
-      }
-    }
-
+    // For other commands, use as-is and let Windows PATHEXT handle extension resolution
+    // Don't force .exe extension - this breaks commands that exist as .cmd/.bat
     return { command, args, useShell: false };
   }
 
@@ -191,7 +212,7 @@ export class ScriptRunner {
       env: { ...process.env }
     };
 
-    // Add shell options if needed
+    // Only use options.shell for simple shell delegation, not when we're explicitly invoking a shell
     if (parsedCommand.useShell) {
       spawnOptions.shell = true;
     }
