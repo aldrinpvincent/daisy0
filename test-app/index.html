@@ -158,6 +158,77 @@
             <button onclick="clearResults()">Clear Results</button>
         </div>
         
+        <div class="test-section">
+            <h3>🤖 MCP Tool Testing Elements</h3>
+            <p>These elements are specifically designed for testing MCP browser control tools:</p>
+            
+            <!-- Form elements for browser_type testing -->
+            <div style="margin: 10px 0;">
+                <label for="mcpTestInput">MCP Test Input:</label>
+                <input type="text" id="mcpTestInput" placeholder="Type here for MCP testing" style="margin: 5px;">
+                <input type="email" id="mcpEmailInput" placeholder="email@example.com" style="margin: 5px;">
+                <textarea id="mcpTextarea" placeholder="Textarea for MCP testing" style="margin: 5px; width: 200px; height: 60px;"></textarea>
+            </div>
+            
+            <!-- Buttons for browser_click testing -->
+            <div style="margin: 10px 0;">
+                <button id="mcpClickTest" onclick="handleMCPClick('primary')">MCP Click Test</button>
+                <button id="mcpSecondaryBtn" class="warning" onclick="handleMCPClick('secondary')">Secondary Button</button>
+                <button id="mcpDisabledBtn" disabled>Disabled Button</button>
+                <button id="mcpHiddenBtn" style="display: none;">Hidden Button</button>
+            </div>
+            
+            <!-- Elements with specific styles for get_computed_styles testing -->
+            <div id="mcpStyledElement" style="
+                color: rgb(255, 0, 0); 
+                background-color: rgb(0, 255, 0); 
+                font-size: 18px; 
+                padding: 20px; 
+                margin: 10px; 
+                border: 2px solid blue;
+                position: relative;
+                display: block;
+            ">
+                Styled Element for CSS Testing
+            </div>
+            
+            <!-- Elements for DOM inspection -->
+            <div id="mcpInspectTarget" class="inspect-target custom-class" data-test="mcp-inspection">
+                <span>DOM Inspection Target</span>
+                <ul>
+                    <li>Item 1</li>
+                    <li>Item 2</li>
+                    <li>Item 3</li>
+                </ul>
+            </div>
+            
+            <!-- Elements for wait_for_element testing -->
+            <div id="mcpDynamicContent" style="margin: 10px 0;">
+                <button onclick="showDelayedElement()">Show Element After Delay</button>
+                <button onclick="hideElement()">Hide Element</button>
+                <div id="mcpDelayedElement" style="display: none; background: rgba(0,255,0,0.3); padding: 10px; margin: 5px;">
+                    This element appears after a delay
+                </div>
+            </div>
+            
+            <!-- Scroll target elements -->
+            <div style="margin-top: 50px; padding: 20px; background: rgba(255,255,255,0.1);">
+                <p>Scroll down to find the scroll target...</p>
+                <div style="height: 300px; overflow-y: scroll; border: 1px solid white; padding: 10px;">
+                    <p>Scrollable content area</p>
+                    <p>More content...</p>
+                    <p>Even more content...</p>
+                    <p>Keep scrolling...</p>
+                    <p>Almost there...</p>
+                    <div id="mcpScrollTarget" style="background: yellow; color: black; padding: 10px; margin: 10px 0;">
+                        🎯 Scroll Target Element
+                    </div>
+                    <p>Content after scroll target</p>
+                    <p>More content below...</p>
+                </div>
+            </div>
+        </div>
+        
         <div id="results"></div>
     </div>
 

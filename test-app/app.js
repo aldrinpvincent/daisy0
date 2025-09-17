@@ -317,6 +317,127 @@ function clearResults() {
     updateStatus('Results cleared');
 }
 
+// MCP Tool Testing Functions
+function handleMCPClick(type) {
+    const timestamp = new Date().toISOString();
+    console.log(`MCP Click Test: ${type} button clicked`, { timestamp, type });
+    addResult(`MCP Click Test: ${type} button clicked`, 'info');
+    updateStatus(`MCP ${type} button clicked`);
+}
+
+function showDelayedElement() {
+    updateStatus('Showing element after 2 second delay...');
+    addResult('Starting delayed element show test', 'info');
+    
+    setTimeout(() => {
+        const element = document.getElementById('mcpDelayedElement');
+        element.style.display = 'block';
+        element.style.opacity = '0';
+        element.style.transition = 'opacity 0.5s ease';
+        
+        // Fade in the element
+        setTimeout(() => {
+            element.style.opacity = '1';
+        }, 50);
+        
+        console.log('Delayed element is now visible', { 
+            timestamp: new Date().toISOString(),
+            elementId: 'mcpDelayedElement',
+            visible: true 
+        });
+        addResult('Delayed element is now visible', 'info');
+        updateStatus('Delayed element shown - ready for MCP testing');
+    }, 2000);
+}
+
+function hideElement() {
+    const element = document.getElementById('mcpDelayedElement');
+    element.style.display = 'none';
+    element.style.opacity = '0';
+    
+    console.log('Element hidden for MCP testing', { 
+        timestamp: new Date().toISOString(),
+        elementId: 'mcpDelayedElement',
+        visible: false 
+    });
+    addResult('Element hidden', 'info');
+    updateStatus('Element hidden - ready for wait_for_element testing');
+}
+
+// Test MCP JavaScript evaluation capabilities
+function testMCPJavaScript() {
+    // This function can be called by evaluate_javascript MCP tool
+    const testData = {
+        timestamp: new Date().toISOString(),
+        pageTitle: document.title,
+        inputValues: {
+            customMessage: document.getElementById('customMessage').value,
+            mcpTestInput: document.getElementById('mcpTestInput').value,
+            mcpEmailInput: document.getElementById('mcpEmailInput').value,
+            mcpTextarea: document.getElementById('mcpTextarea').value
+        },
+        elementCounts: {
+            buttons: document.querySelectorAll('button').length,
+            inputs: document.querySelectorAll('input').length,
+            divs: document.querySelectorAll('div').length
+        },
+        windowDimensions: {
+            width: window.innerWidth,
+            height: window.innerHeight
+        }
+    };
+    
+    console.log('MCP JavaScript evaluation test data:', testData);
+    return testData;
+}
+
+// Generate artificial network activity for network monitoring tests
+function generateNetworkActivity() {
+    updateStatus('Generating network activity for MCP testing...');
+    
+    const requests = [
+        fetch('/api/success'),
+        fetch('/api/slow'),
+        fetch('/api/error').catch(() => {}), // Catch to prevent unhandled rejection
+        fetch('/api/notfound').catch(() => {})
+    ];
+    
+    Promise.allSettled(requests).then(results => {
+        console.log('Network activity completed for MCP testing', {
+            timestamp: new Date().toISOString(),
+            requestCount: requests.length,
+            results: results.map(r => r.status)
+        });
+        addResult(`Generated ${requests.length} network requests for MCP testing`, 'info');
+        updateStatus('Network activity completed');
+    });
+}
+
+// Test MCP form interaction
+function testMCPFormInteraction() {
+    const inputs = {
+        mcpTestInput: 'MCP Test Value',
+        mcpEmailInput: 'mcp@test.com',
+        mcpTextarea: 'This is a test message for MCP browser_type tool validation.'
+    };
+    
+    // Fill inputs programmatically (simulating MCP tool behavior)
+    Object.entries(inputs).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.value = value;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+    
+    console.log('MCP form interaction test completed', {
+        timestamp: new Date().toISOString(),
+        inputs
+    });
+    addResult('MCP form inputs filled programmatically', 'info');
+    updateStatus('Form interaction test completed');
+}
+
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🌼 Daisy Test Application Loaded');
@@ -328,6 +449,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     updateStatus('Application loaded - Ready for testing!');
     addResult('Daisy Test Application initialized', 'info');
+    
+    // Expose MCP testing functions to global scope for evaluate_javascript testing
+    window.testMCPJavaScript = testMCPJavaScript;
+    window.generateNetworkActivity = generateNetworkActivity;
+    window.testMCPFormInteraction = testMCPFormInteraction;
+    window.handleMCPClick = handleMCPClick;
+    window.showDelayedElement = showDelayedElement;
+    window.hideElement = hideElement;
+    
+    console.log('MCP testing functions exposed to global scope', {
+        functions: ['testMCPJavaScript', 'generateNetworkActivity', 'testMCPFormInteraction', 'handleMCPClick', 'showDelayedElement', 'hideElement']
+    });
     
     // Handle unhandled promise rejections
     window.addEventListener('unhandledrejection', function(event) {
