@@ -1,1 +1,0 @@
-{"version":3,"file":"chrome-launcher.d.ts","sourceRoot":"","sources":["../src/chrome-launcher.ts"],"names":[],"mappings":"AAEA,qBAAa,cAAc;IACzB,OAAO,CAAC,MAAM,CAAM;IACpB,OAAO,CAAC,IAAI,CAAS;gBAET,IAAI,GAAE,MAAa;IAIzB,MAAM,IAAI,OAAO,CAAC,GAAG,CAAC;IA2BtB,IAAI,IAAI,OAAO,CAAC,IAAI,CAAC;IAM3B,OAAO,IAAI,MAAM;IAIjB,iBAAiB,IAAI,GAAG;CAGzB"}
