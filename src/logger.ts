@@ -131,11 +131,18 @@ export class DaisyLogger {
     const staticAssetExtensions = ['.woff2', '.woff', '.ttf', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
     const isStaticAsset = staticAssetExtensions.some(ext => url.toLowerCase().includes(ext));
     const isFontRequest = url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
-    const isJavaScriptFile = headers && headers['content-type'] && 
-                            (headers['content-type'].includes('text/javascript') || 
-                             headers['content-type'].includes('application/javascript'));
-    const isDevFile = url.includes('__x00__') || url.includes('/@id/') || url.includes('hmr-runtime');
-    
+
+    // Check for JavaScript files - handle different header casing
+    const contentType = headers && (headers['content-type'] || headers['Content-Type'] || '').toLowerCase();
+    const isJavaScriptFile = contentType &&
+      (contentType.includes('text/javascript') ||
+        contentType.includes('application/javascript') ||
+        contentType.includes('text/jsx') ||
+        contentType.includes('text/tsx'));
+
+    const isDevFile = url.includes('__x00__') || url.includes('/@id/') || url.includes('hmr-runtime') ||
+      url.includes('node_modules') || url.includes('.tsx') || url.includes('.jsx');
+
     if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest || isJavaScriptFile || isDevFile)) {
       return; // Skip static assets and dev files unless in verbose mode
     }
@@ -163,19 +170,19 @@ export class DaisyLogger {
       const responseBody = this.extractResponseBody(responseData);
       if (responseBody) {
         // Always include JSON API responses (they're crucial for debugging)
-        const isJsonResponse = headers && headers['content-type'] && 
-                              headers['content-type'].includes('application/json');
-        
+        const isJsonResponse = headers && headers['content-type'] &&
+          headers['content-type'].includes('application/json');
+
         if (isJsonResponse || this.logLevel === 'verbose') {
           // For JSON responses, include more content but still limit size
           const maxLength = isJsonResponse ? 1000 : 200;
           if (typeof responseBody === 'string') {
-            networkData.responseBody = responseBody.length > maxLength ? 
+            networkData.responseBody = responseBody.length > maxLength ?
               responseBody.substring(0, maxLength) + '...[truncated]' : responseBody;
           } else {
             // For parsed JSON objects, stringify and limit
             const jsonString = JSON.stringify(responseBody, null, 2);
-            networkData.responseBody = jsonString.length > maxLength ? 
+            networkData.responseBody = jsonString.length > maxLength ?
               jsonString.substring(0, maxLength) + '...[truncated]' : responseBody;
           }
         }
@@ -233,18 +240,18 @@ export class DaisyLogger {
     }
 
     // Simplify page event data to reduce noise
-    const simplifiedData = eventType === 'navigation' ? { 
-      event: 'navigation', 
-      url: url || data.frame?.url 
-    } : 
-    eventType === 'load' ? { event: 'page_loaded' } :
-    eventType === 'domContentLoaded' ? { event: 'dom_ready' } :
-    eventType === 'documentUpdated' ? { event: 'dom_updated' } :
-    { event: eventType };
+    const simplifiedData = eventType === 'navigation' ? {
+      event: 'navigation',
+      url: url || data.frame?.url
+    } :
+      eventType === 'load' ? { event: 'page_loaded' } :
+        eventType === 'domContentLoaded' ? { event: 'dom_ready' } :
+          eventType === 'documentUpdated' ? { event: 'dom_updated' } :
+            { event: eventType };
 
     // Skip noisy page events in standard mode
-    if (this.logLevel !== 'verbose' && 
-        ['dom_updated', 'dom_ready'].includes(simplifiedData.event)) {
+    if (this.logLevel !== 'verbose' &&
+      ['dom_updated', 'dom_ready'].includes(simplifiedData.event)) {
       return;
     }
 
@@ -276,10 +283,15 @@ export class DaisyLogger {
       return;
     }
 
-    // Clean up click data - focus on what element was clicked
+    // Skip clicks on non-interactive elements (divs, spans, etc.)
+    const tag = data.element?.tag?.toLowerCase();
+    const interactiveElements = ['button', 'a', 'input', 'select', 'textarea'];
+    if (!interactiveElements.includes(tag)) {
+      return; // Only log clicks on interactive elements
+    }
+      
     const cleanData: any = {
-      type: 'CLICK',
-      action: `Clicked ${data.element?.tag || 'element'}`
+      action: 'CLICK',
     };
 
     if (data.element) {
@@ -288,14 +300,8 @@ export class DaisyLogger {
         text: data.element.text?.substring(0, 30) || '', // Shorter text
         tag: data.element.tag
       };
-      
-      // Create a more readable message
-      const elementDesc = data.element.text ? 
-        `"${data.element.text.substring(0, 20)}"` : 
-        data.element.selector;
-      cleanData.action = `Clicked ${data.element.tag}: ${elementDesc}`;
     }
-
+      
     this.log({
       timestamp: new Date().toISOString(),
       type: 'interaction',
