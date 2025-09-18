@@ -51,10 +51,10 @@ export class DevEnvironment {
    * Returns main log file, symlink path, screenshots directory, and symlink status
    */
   private createPersistentLogFile(): { logFilePath: string; symlinkPath: string; screenshotsDir: string; isUsingSymlink: boolean } {
-    // Use desktop directory instead of temp for better file access
-    const daisyDir = 'C:\\Users\\aldvincent\\Desktop\\aldrin\\apps\\daisy_new\\logs';
+    // Use user's home directory with .daisy subdirectory for cross-platform compatibility
+    const daisyDir = path.join(os.homedir(), '.daisy', 'logs');
     
-    // Ensure daisy temp directory exists
+    // Ensure daisy directory exists
     if (!fs.existsSync(daisyDir)) {
       fs.mkdirSync(daisyDir, { recursive: true });
     }

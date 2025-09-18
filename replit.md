@@ -22,7 +22,7 @@ daisy --script "npm run start:dev"
 - 🌐 **Chrome debugging** (headless with DevTools Protocol)  
 - 📊 **Web viewer** on http://localhost:5000 (visual log interface)
 - 🤖 **MCP server** (stdio transport for AI assistants)
-- 📝 **Centralized logging** to `/tmp/daisy/current.log`
+- 📝 **Centralized logging** to `~/.daisy/logs/daisy-current.log`
 - 📸 **Automatic screenshots** on errors
 
 ## Auto-Detection Features
@@ -178,6 +178,12 @@ Daisy follows a modular, event-driven architecture with clear separation of conc
 - Output directory separation (src/ → dist/)
 
 # Recent Improvements
+
+## Cross-Platform Compatibility Fix
+- **Fixed critical hard-coded path issue** that prevented application from working for other users
+- Replaced Windows-specific path with cross-platform solution using `~/.daisy/logs/`
+- Application now works on all platforms (Windows, macOS, Linux) for all users
+- Log files are now stored in user's home directory under `.daisy` folder for persistent access
 
 ## Log Filtering System
 - Added configurable verbosity levels: minimal, standard, verbose
