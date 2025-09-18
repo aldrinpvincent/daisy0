@@ -289,25 +289,28 @@ export class DaisyLogger {
     if (!interactiveElements.includes(tag)) {
       return; // Only log clicks on interactive elements
     }
-      
-    const cleanData: any = {
-      action: 'CLICK',
-    };
 
-    if (data.element) {
-      cleanData.element = {
-        selector: data.element.selector,
-        text: data.element.text?.substring(0, 30) || '', // Shorter text
-        tag: data.element.tag
-      };
-    }
-      
+    // LLM-optimized format: clear action with context
+    const elementText = data.element?.text?.trim().substring(0, 25) || '';
+    const elementId = data.element?.id || '';
+    const elementClass = data.element?.className?.split(' ')[0] || ''; // First class only
+    
+    // Create descriptive but concise message for LLM understanding
+    let elementDesc = elementText;
+    if (!elementDesc && elementId) elementDesc = `#${elementId}`;
+    if (!elementDesc && elementClass) elementDesc = `.${elementClass}`;
+    if (!elementDesc) elementDesc = tag;
+
     this.log({
       timestamp: new Date().toISOString(),
       type: 'interaction',
       level: 'info',
       source: 'user_action',
-      data: cleanData
+      data: {
+        action: 'CLICK',
+        target: elementDesc,
+        element_type: tag
+      }
     });
   }
 
