@@ -2,6 +2,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { DaisyLogParser, ParsedLogData, DaisyLogEntry } from './log-parser.js';
+import { diagnoseError } from './tools/diagnose-error.js';
 import * as chokidar from 'chokidar';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -250,6 +251,29 @@ export class DaisyMCPServer {
                   enum: ['concise', 'detailed', 'technical'],
                   description: 'Summary format style',
                   default: 'detailed'
+                }
+              }
+            }
+          },
+          {
+            name: 'diagnose_error',
+            description: 'Comprehensive first-responder diagnostic tool that gathers ALL essential information when any error occurs. Captures visual state, analyzes recent errors, checks network activity, inspects DOM state, and provides actionable insights in a single call.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                context: {
+                  type: 'string',
+                  description: 'Optional description of what the user was trying to do when the error occurred'
+                },
+                timeWindow: {
+                  type: 'number',
+                  description: 'How far back to look for errors in milliseconds (default 30000ms = 30 seconds)',
+                  default: 30000
+                },
+                includeStackTraces: {
+                  type: 'boolean',
+                  description: 'Include full stack traces in error analysis (default true)',
+                  default: true
                 }
               }
             }
@@ -569,6 +593,8 @@ export class DaisyMCPServer {
           return await this.handleSuggestFixes(args);
         case 'get_log_summary':
           return await this.handleGetLogSummary(args);
+        case 'diagnose_error':
+          return await this.handleDiagnoseError(args);
         
         // Browser interaction tools
         case 'take_screenshot':
@@ -709,6 +735,10 @@ export class DaisyMCPServer {
   private async handleGetLogSummary(args: any) {
     const { getLogSummary } = await import('./tools/get-log-summary.js');
     return getLogSummary(args, this.logData, this.parser);
+  }
+
+  private async handleDiagnoseError(args: any) {
+    return diagnoseError(args, this.getAllLogEntries(), this.parser, this.makeControlApiRequest.bind(this));
   }
 
   // Browser interaction tool handlers
