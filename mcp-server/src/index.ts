@@ -15,6 +15,8 @@ program
   .option('-s, --screenshots-dir <path>', 'Directory containing screenshots', './screenshots')
   .option('--auto-detect', 'Auto-detect daisy log files in current directory', false)
   .option('--transport <type>', 'Transport type (stdio only)', 'stdio')
+  .option('--control-api-port <port>', 'Control API server port', '9223')
+  .option('--control-api-host <host>', 'Control API server host', 'localhost')
   .parse();
 
 const options = program.opts();
@@ -62,13 +64,16 @@ async function main() {
   console.error(`📁 Screenshots: ${screenshotsDir}`);
   console.error(`👁️  Watch mode: ${options.watch ? 'enabled' : 'disabled'}`);
   console.error(`🚀 Transport: ${options.transport}`);
+  console.error(`🎮 Control API: ${options.controlApiHost}:${options.controlApiPort}`);
 
   // Create and start MCP server
   const server = new DaisyMCPServer({
     logFiles: logFiles.map(f => path.resolve(f)),
     screenshotsDir,
     watchMode: options.watch,
-    transport: options.transport
+    transport: options.transport,
+    controlApiPort: parseInt(options.controlApiPort, 10),
+    controlApiHost: options.controlApiHost
   });
 
   try {

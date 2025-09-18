@@ -30,6 +30,7 @@
   "dependencies": {
     "@types/chrome-remote-interface": "^0.31.14",
     "@types/cross-spawn": "^6.0.6",
+    "@types/express": "^5.0.3",
     "@types/node": "^24.5.0",
     "chokidar": "^4.0.3",
     "chrome-launcher": "^1.2.0",
