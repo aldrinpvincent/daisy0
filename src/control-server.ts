@@ -140,7 +140,7 @@ export class ControlServer {
     // Navigate to URL
     this.app.post('/navigate', async (req: Request, res: Response) => {
       try {
-        const { url, waitForLoad = true, timeout = 30000 } = req.body;
+        const { url, waitForLoad = true, timeout = 10000, fast = false } = req.body;
         if (!url) {
           return res.status(400).json({
             success: false,
@@ -148,7 +148,13 @@ export class ControlServer {
           });
         }
 
-        const result = await this.devToolsMonitor.navigateTo(url, waitForLoad, timeout);
+        let result;
+        if (fast) {
+          result = await this.devToolsMonitor.navigateFast(url);
+        } else {
+          result = await this.devToolsMonitor.navigateTo(url, waitForLoad, timeout);
+        }
+        
         res.json({
           success: true,
           result,

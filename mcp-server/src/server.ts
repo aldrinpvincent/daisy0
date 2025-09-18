@@ -110,53 +110,8 @@ export class DaisyMCPServer {
       return {
         tools: [
           {
-            name: 'analyze_logs',
-            description: 'Parse and categorize log entries by type, severity, and time range with filtering capabilities',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                logFile: {
-                  type: 'string',
-                  description: 'Path to specific log file (optional, defaults to all loaded files)'
-                },
-                types: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Filter by log types: console, network, error, performance, page, security, runtime'
-                },
-                levels: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Filter by log levels: info, warn, error, debug'
-                },
-                timeRange: {
-                  type: 'object',
-                  properties: {
-                    start: { type: 'string', description: 'Start time (ISO 8601)' },
-                    end: { type: 'string', description: 'End time (ISO 8601)' }
-                  }
-                },
-                minSeverity: {
-                  type: 'number',
-                  description: 'Minimum severity level (1-5, where 5 is critical)',
-                  minimum: 1,
-                  maximum: 5
-                },
-                search: {
-                  type: 'string',
-                  description: 'Search term to filter log entries'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum number of entries to return',
-                  default: 100
-                }
-              }
-            }
-          },
-          {
-            name: 'find_errors',
-            description: 'Extract and analyze JavaScript errors, network failures, and console errors with context',
+            name: 'smart_debug',
+            description: 'AI-focused comprehensive error analysis with specific solutions and code examples. Primary debugging tool for coding agents.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -164,349 +119,128 @@ export class DaisyMCPServer {
                   type: 'string',
                   description: 'Path to specific log file (optional)'
                 },
-                errorTypes: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Types of errors to find: js_errors, network_failures, console_errors, all'
-                },
-                includeContext: {
-                  type: 'boolean',
-                  description: 'Include surrounding log entries for context',
-                  default: true
-                },
-                timeRange: {
-                  type: 'object',
-                  properties: {
-                    start: { type: 'string' },
-                    end: { type: 'string' }
-                  }
-                }
-              }
-            }
-          },
-          {
-            name: 'performance_insights',
-            description: 'Analyze performance metrics, slow requests, memory usage patterns, and identify bottlenecks',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                logFile: {
-                  type: 'string',
-                  description: 'Path to specific log file (optional)'
-                },
-                metrics: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Metrics to analyze: load_times, network_performance, memory_usage, all'
-                },
-                thresholds: {
-                  type: 'object',
-                  properties: {
-                    slowRequestMs: { type: 'number', default: 1000 },
-                    largeResponseBytes: { type: 'number', default: 1048576 }
-                  }
-                }
-              }
-            }
-          },
-          {
-            name: 'suggest_fixes',
-            description: 'Provide debugging suggestions and potential fixes based on log patterns and error analysis',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                logFile: {
-                  type: 'string',
-                  description: 'Path to specific log file (optional)'
-                },
-                errorContext: {
-                  type: 'string',
-                  description: 'Specific error or issue to analyze'
-                },
-                includeCodeSuggestions: {
-                  type: 'boolean',
-                  description: 'Include specific code fix suggestions',
-                  default: true
-                }
-              }
-            }
-          },
-          {
-            name: 'get_log_summary',
-            description: 'Generate comprehensive log session summary with statistics, insights, and key findings',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                logFile: {
-                  type: 'string',
-                  description: 'Path to specific log file (optional)'
-                },
-                includeDetails: {
-                  type: 'boolean',
-                  description: 'Include detailed breakdown of issues',
-                  default: true
-                },
-                format: {
-                  type: 'string',
-                  enum: ['concise', 'detailed', 'technical'],
-                  description: 'Summary format style',
-                  default: 'detailed'
-                }
-              }
-            }
-          },
-          {
-            name: 'diagnose_error',
-            description: 'Comprehensive first-responder diagnostic tool that gathers ALL essential information when any error occurs. Captures visual state, analyzes recent errors, checks network activity, inspects DOM state, and provides actionable insights in a single call.',
-            inputSchema: {
-              type: 'object',
-              properties: {
                 context: {
                   type: 'string',
-                  description: 'Optional description of what the user was trying to do when the error occurred'
+                  description: 'Context about what the user was trying to do when the error occurred'
                 },
                 timeWindow: {
                   type: 'number',
-                  description: 'How far back to look for errors in milliseconds (default 30000ms = 30 seconds)',
-                  default: 30000
+                  description: 'How far back to look for errors in milliseconds (default 300000ms = 5 minutes)',
+                  default: 300000
                 },
-                includeStackTraces: {
+                includeScreenshot: {
                   type: 'boolean',
-                  description: 'Include full stack traces in error analysis (default true)',
+                  description: 'Capture screenshot for visual debugging context',
                   default: true
                 }
               }
             }
           },
           {
-            name: 'take_screenshot',
-            description: 'Take a screenshot of the current browser page with optional context for debugging',
+            name: 'quick_errors',
+            description: 'Fast error detection and categorization for immediate issue identification. Optimized for AI agents.',
             inputSchema: {
               type: 'object',
               properties: {
-                context: {
+                logFile: {
                   type: 'string',
-                  description: 'Context description for the screenshot (used in filename)',
-                  default: 'mcp-request'
+                  description: 'Path to specific log file (optional)'
+                },
+                timeWindow: {
+                  type: 'number',
+                  description: 'How many minutes back to scan for errors (default 10 minutes)',
+                  default: 10
+                },
+                severity: {
+                  type: 'string',
+                  enum: ['all', 'critical', 'high', 'medium'],
+                  description: 'Filter errors by severity level',
+                  default: 'all'
                 }
               }
             }
           },
           {
-            name: 'browser_click',
-            description: 'Click on a DOM element by CSS selector',
+            name: 'browser_control',
+            description: 'Unified browser automation tool for all interactions: click, type, navigate, scroll, inspect, evaluate, wait, screenshot',
             inputSchema: {
               type: 'object',
               properties: {
-                selector: {
+                action: {
                   type: 'string',
-                  description: 'CSS selector for the element to click'
+                  enum: ['click', 'type', 'navigate', 'scroll', 'inspect', 'evaluate', 'wait', 'screenshot'],
+                  description: 'Browser action to perform'
                 },
-                timeout: {
-                  type: 'number',
-                  description: 'Timeout in milliseconds to wait for element',
-                  default: 5000
-                }
-              },
-              required: ['selector']
-            }
-          },
-          {
-            name: 'browser_type',
-            description: 'Type text into an input field or text area by CSS selector',
-            inputSchema: {
-              type: 'object',
-              properties: {
                 selector: {
                   type: 'string',
-                  description: 'CSS selector for the input element'
+                  description: 'CSS selector for element (required for click, type, inspect, scroll to element)'
                 },
                 text: {
                   type: 'string',
-                  description: 'Text to type into the element'
+                  description: 'Text to type (required for type action)'
                 },
-                timeout: {
-                  type: 'number',
-                  description: 'Timeout in milliseconds to wait for element',
-                  default: 5000
-                },
-                clear: {
-                  type: 'boolean',
-                  description: 'Clear existing text before typing',
-                  default: false
-                }
-              },
-              required: ['selector', 'text']
-            }
-          },
-          {
-            name: 'browser_navigate',
-            description: 'Navigate the browser to a specific URL',
-            inputSchema: {
-              type: 'object',
-              properties: {
                 url: {
                   type: 'string',
-                  description: 'URL to navigate to'
+                  description: 'URL to navigate to (required for navigate action)'
                 },
-                waitForLoad: {
-                  type: 'boolean',
-                  description: 'Wait for page to fully load',
-                  default: true
-                },
-                timeout: {
-                  type: 'number',
-                  description: 'Navigation timeout in milliseconds',
-                  default: 30000
-                }
-              },
-              required: ['url']
-            }
-          },
-          {
-            name: 'browser_scroll',
-            description: 'Scroll the page to an element or specific coordinates',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                selector: {
+                code: {
                   type: 'string',
-                  description: 'CSS selector of element to scroll to (optional)'
+                  description: 'JavaScript code to execute (required for evaluate action)'
                 },
                 x: {
                   type: 'number',
-                  description: 'X coordinate to scroll to (optional)'
+                  description: 'X coordinate for scroll action'
                 },
                 y: {
                   type: 'number',
-                  description: 'Y coordinate to scroll to (optional)'
+                  description: 'Y coordinate for scroll action'
                 },
-                behavior: {
+                timeout: {
+                  type: 'number',
+                  description: 'Timeout in milliseconds',
+                  default: 5000
+                },
+                context: {
                   type: 'string',
-                  enum: ['smooth', 'instant', 'auto'],
-                  description: 'Scroll behavior',
-                  default: 'smooth'
-                }
-              }
-            }
-          },
-          {
-            name: 'inspect_dom',
-            description: 'Inspect DOM element properties, HTML content, and attributes',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                selector: {
-                  type: 'string',
-                  description: 'CSS selector for the element to inspect'
+                  description: 'Context for screenshot action'
                 },
                 properties: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Properties to retrieve (textContent, innerHTML, outerHTML, className, id, etc.)',
-                  default: ['textContent', 'innerHTML', 'outerHTML', 'className', 'id']
-                }
-              },
-              required: ['selector']
-            }
-          },
-          {
-            name: 'get_computed_styles',
-            description: 'Get computed CSS styles for a DOM element',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                selector: {
-                  type: 'string',
-                  description: 'CSS selector for the element'
+                  description: 'Properties to retrieve for inspect action'
                 },
-                properties: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'CSS properties to retrieve',
-                  default: ['color', 'background-color', 'font-size', 'display', 'position']
-                }
-              },
-              required: ['selector']
-            }
-          },
-          {
-            name: 'evaluate_javascript',
-            description: 'Execute JavaScript code in the browser context and return the result',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                code: {
+                waitFor: {
                   type: 'string',
-                  description: 'JavaScript code to execute'
+                  enum: ['element', 'network'],
+                  description: 'What to wait for (required for wait action)'
                 },
-                returnByValue: {
+                clear: {
                   type: 'boolean',
-                  description: 'Return result by value instead of object reference',
-                  default: true
-                },
-                timeout: {
-                  type: 'number',
-                  description: 'Execution timeout in milliseconds',
-                  default: 10000
+                  description: 'Clear field before typing',
+                  default: false
                 }
               },
-              required: ['code']
+              required: ['action']
             }
           },
           {
-            name: 'inspect_network_tab',
-            description: 'Get recent network requests with full details including headers and response data',
+            name: 'read_raw_log',
+            description: 'Read the raw log file content directly without parsing - useful for debugging parser issues',
             inputSchema: {
               type: 'object',
               properties: {
-                limit: {
-                  type: 'number',
-                  description: 'Maximum number of network requests to return',
-                  default: 50
-                }
-              }
-            }
-          },
-          {
-            name: 'wait_for_element',
-            description: 'Wait for a DOM element to appear or become visible',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                selector: {
+                logFile: {
                   type: 'string',
-                  description: 'CSS selector for the element to wait for'
+                  description: 'Path to log file (optional, defaults to current daisy log)'
                 },
-                timeout: {
+                lines: {
                   type: 'number',
-                  description: 'Maximum wait time in milliseconds',
-                  default: 10000
+                  description: 'Number of lines to return (optional, returns all if not specified)'
                 },
-                visible: {
+                fromEnd: {
                   type: 'boolean',
-                  description: 'Wait for element to be visible (not just present in DOM)',
-                  default: true
-                }
-              },
-              required: ['selector']
-            }
-          },
-          {
-            name: 'wait_for_network_idle',
-            description: 'Wait for network activity to finish (no pending requests)',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                timeout: {
-                  type: 'number',
-                  description: 'Maximum wait time in milliseconds',
-                  default: 10000
-                },
-                idleTime: {
-                  type: 'number',
-                  description: 'How long to wait with no network activity before considering idle',
-                  default: 1000
+                  description: 'If true, return lines from end of file (tail), otherwise from beginning',
+                  default: false
                 }
               }
             }
@@ -582,43 +316,15 @@ export class DaisyMCPServer {
       const { name, arguments: args } = request.params;
       
       switch (name) {
-        // Log analysis tools
-        case 'analyze_logs':
-          return await this.handleAnalyzeLogs(args);
-        case 'find_errors':
-          return await this.handleFindErrors(args);
-        case 'performance_insights':
-          return await this.handlePerformanceInsights(args);
-        case 'suggest_fixes':
-          return await this.handleSuggestFixes(args);
-        case 'get_log_summary':
-          return await this.handleGetLogSummary(args);
-        case 'diagnose_error':
-          return await this.handleDiagnoseError(args);
-        
-        // Browser interaction tools
-        case 'take_screenshot':
-          return await this.handleTakeScreenshot(args);
-        case 'browser_click':
-          return await this.handleBrowserClick(args);
-        case 'browser_type':
-          return await this.handleBrowserType(args);
-        case 'browser_navigate':
-          return await this.handleBrowserNavigate(args);
-        case 'browser_scroll':
-          return await this.handleBrowserScroll(args);
-        case 'inspect_dom':
-          return await this.handleInspectDOM(args);
-        case 'get_computed_styles':
-          return await this.handleGetComputedStyles(args);
-        case 'evaluate_javascript':
-          return await this.handleEvaluateJavaScript(args);
-        case 'inspect_network_tab':
-          return await this.handleInspectNetworkTab(args);
-        case 'wait_for_element':
-          return await this.handleWaitForElement(args);
-        case 'wait_for_network_idle':
-          return await this.handleWaitForNetworkIdle(args);
+        // Streamlined debugging tools
+        case 'smart_debug':
+          return await this.handleSmartDebug(args);
+        case 'quick_errors':
+          return await this.handleQuickErrors(args);
+        case 'browser_control':
+          return await this.handleBrowserControl(args);
+        case 'read_raw_log':
+          return await this.handleReadRawLog(args);
         
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -1149,6 +855,26 @@ export class DaisyMCPServer {
         isError: true
       };
     }
+  }
+
+  private async handleReadRawLog(args: any) {
+    const { readRawLog } = await import('./tools/read-raw-log.js');
+    return readRawLog(args);
+  }
+
+  private async handleSmartDebug(args: any) {
+    const { smartDebug } = await import('./tools/smart-debug.js');
+    return smartDebug(args, this.getAllLogEntries(), this.parser, this.makeControlApiRequest.bind(this));
+  }
+
+  private async handleQuickErrors(args: any) {
+    const { quickErrors } = await import('./tools/quick-errors.js');
+    return quickErrors(args, this.getAllLogEntries(), this.parser);
+  }
+
+  private async handleBrowserControl(args: any) {
+    const { browserControl } = await import('./tools/browser-control.js');
+    return browserControl(args, this.makeControlApiRequest.bind(this));
   }
 
   private getAllLogEntries(): DaisyLogEntry[] {
