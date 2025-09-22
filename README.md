@@ -20,7 +20,7 @@ daisy --script "yarn dev"
 ## What Daisy Does
 
 With one command, Daisy automatically:
-- 🌐 **Launches Chrome debugging** (headless with DevTools Protocol)
+- 🌐 **Launches Chrome debugging** (with DevTools Protocol)
 - 📊 **Starts web viewer** on http://localhost:5000
 - 🤖 **Runs MCP server** for AI assistant integration
 - 📝 **Captures structured logs** to `~/.daisy/logs/`
