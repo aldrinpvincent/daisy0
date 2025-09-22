@@ -149,13 +149,22 @@ npx daisy-mcp-server --auto-detect --watch
 }
 ```
 
-**VS Code + Copilot** (settings.json):
+**VS Code + Copilot ** (`mcp.json`):
 ```json
 {
-  "mcp.servers": {
-    "daisy-debugging": {
-      "command": "npx", 
-      "args": ["daisy-mcp-server", "--auto-detect", "--watch"]
+  "mcpServers": {
+    "daisy-debug": {
+      "command": "node",
+      "args": [
+        "/path/to/daisy/mcp-server/dist/index.js",
+        "--log-file", "~/.daisy/logs/daisy-current.log",
+        "--screenshots-dir", "~/.daisy/logs/screenshots",
+        "--watch"
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": ["analyze_logs", "find_errors", "get_log_summary"],
+      "disabledTools": []
     }
   }
 }
