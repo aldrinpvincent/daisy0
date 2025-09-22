@@ -5,6 +5,8 @@ export interface ReadRawLogArgs {
   logFile?: string;
   lines?: number;
   fromEnd?: boolean;
+  filter?: string; // Filter by log level or type
+  timeWindow?: number; // Minutes back from now
 }
 
 export async function readRawLog(args: ReadRawLogArgs) {
@@ -29,10 +31,31 @@ export async function readRawLog(args: ReadRawLogArgs) {
 
     // Read the entire file
     const content = fs.readFileSync(logFile, 'utf8');
-    const lines = content.split('\n');
+    let lines = content.split('\n');
     const totalLines = lines.length;
     
-    // Apply line filtering if requested
+    // Apply time filtering if requested
+    if (args.timeWindow) {
+      const cutoffTime = new Date(Date.now() - args.timeWindow * 60 * 1000).toISOString();
+      lines = lines.filter(line => {
+        if (line.includes('"timestamp"')) {
+          const match = line.match(/"timestamp":\s*"([^"]+)"/);
+          if (match) {
+            return match[1] >= cutoffTime;
+          }
+        }
+        return true; // Keep non-log lines (headers, etc.)
+      });
+    }
+    
+    // Apply content filtering if requested
+    if (args.filter) {
+      lines = lines.filter(line => 
+        line.toLowerCase().includes(args.filter!.toLowerCase())
+      );
+    }
+    
+    // Apply line count filtering if requested
     let selectedLines = lines;
     if (args.lines && args.lines > 0) {
       if (args.fromEnd) {

@@ -142,19 +142,16 @@ export class DaisyLogger {
     const isStaticAsset = staticAssetExtensions.some(ext => url.toLowerCase().includes(ext));
     const isFontRequest = url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com');
 
-    // Check for JavaScript files - handle different header casing
+    // Check for content types to skip - handle different header casing
     const contentType = headers && (headers['content-type'] || headers['Content-Type'] || '').toLowerCase();
-    const isJavaScriptFile = contentType &&
-      (contentType.includes('text/javascript') ||
-        contentType.includes('application/javascript') ||
-        contentType.includes('text/jsx') ||
-        contentType.includes('text/tsx'));
+    const skipContentTypes = ['text/html', 'text/javascript', 'application/javascript', 'text/jsx', 'text/tsx'];
+    const isSkippableContentType = contentType && skipContentTypes.some(type => contentType.includes(type));
 
     const isDevFile = url.includes('__x00__') || url.includes('/@id/') || url.includes('hmr-runtime') ||
       url.includes('node_modules') || url.includes('.tsx') || url.includes('.jsx');
 
-    if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest || isJavaScriptFile || isDevFile)) {
-      return; // Skip static assets and dev files unless in verbose mode
+    if (this.logLevel !== 'verbose' && (isStaticAsset || isFontRequest || isSkippableContentType || isDevFile)) {
+      return; // Skip static assets, HTML pages, and dev files unless in verbose mode
     }
 
     // Create clean network log structure

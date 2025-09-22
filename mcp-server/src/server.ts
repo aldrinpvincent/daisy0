@@ -110,8 +110,8 @@ export class DaisyMCPServer {
       return {
         tools: [
           {
-            name: 'smart_debug',
-            description: 'AI-focused comprehensive error analysis with specific solutions and code examples. Primary debugging tool for coding agents.',
+            name: 'get_errors_only',
+            description: 'Extract only error-level log entries with optional context',
             inputSchema: {
               type: 'object',
               properties: {
@@ -119,26 +119,22 @@ export class DaisyMCPServer {
                   type: 'string',
                   description: 'Path to specific log file (optional)'
                 },
-                context: {
-                  type: 'string',
-                  description: 'Context about what the user was trying to do when the error occurred'
-                },
                 timeWindow: {
                   type: 'number',
-                  description: 'How far back to look for errors in milliseconds (default 300000ms = 5 minutes)',
-                  default: 300000
+                  description: 'How many minutes back to scan (default 10 minutes)',
+                  default: 10
                 },
-                includeScreenshot: {
+                includeContext: {
                   type: 'boolean',
-                  description: 'Capture screenshot for visual debugging context',
+                  description: 'Show 1-2 lines before/after each error',
                   default: true
                 }
               }
             }
           },
           {
-            name: 'quick_errors',
-            description: 'Fast error detection and categorization for immediate issue identification. Optimized for AI agents.',
+            name: 'get_network_failures',
+            description: 'Extract only failed HTTP requests with response bodies',
             inputSchema: {
               type: 'object',
               properties: {
@@ -148,16 +144,57 @@ export class DaisyMCPServer {
                 },
                 timeWindow: {
                   type: 'number',
-                  description: 'How many minutes back to scan for errors (default 10 minutes)',
+                  description: 'How many minutes back to scan (default 10 minutes)',
                   default: 10
                 },
-                severity: {
-                  type: 'string',
-                  enum: ['all', 'critical', 'high', 'medium'],
-                  description: 'Filter errors by severity level',
-                  default: 'all'
+                statusCodes: {
+                  type: 'array',
+                  items: { type: 'number' },
+                  description: 'HTTP status codes to filter (default [400, 401, 403, 404, 500])',
+                  default: [400, 401, 403, 404, 500]
                 }
               }
+            }
+          },
+          {
+            name: 'get_last_action_context',
+            description: 'Show the last user action and any errors that followed within 5 seconds',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                logFile: {
+                  type: 'string',
+                  description: 'Path to specific log file (optional)'
+                }
+              }
+            }
+          },
+          {
+            name: 'search_logs',
+            description: 'Simple text search in logs with time filtering',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                logFile: {
+                  type: 'string',
+                  description: 'Path to specific log file (optional)'
+                },
+                pattern: {
+                  type: 'string',
+                  description: 'Search pattern (regex supported, e.g., "404|error|failed")'
+                },
+                timeWindow: {
+                  type: 'number',
+                  description: 'How many minutes back to search (default 15 minutes)',
+                  default: 15
+                },
+                maxResults: {
+                  type: 'number',
+                  description: 'Maximum number of results to return (default 10)',
+                  default: 10
+                }
+              },
+              required: ['pattern']
             }
           },
           {
@@ -225,7 +262,7 @@ export class DaisyMCPServer {
           },
           {
             name: 'read_raw_log',
-            description: 'Read the raw log file content directly without parsing - useful for debugging parser issues',
+            description: 'Read raw log file content with filtering options',
             inputSchema: {
               type: 'object',
               properties: {
@@ -241,6 +278,14 @@ export class DaisyMCPServer {
                   type: 'boolean',
                   description: 'If true, return lines from end of file (tail), otherwise from beginning',
                   default: false
+                },
+                filter: {
+                  type: 'string',
+                  description: 'Filter by content (e.g., "error", "network")'
+                },
+                timeWindow: {
+                  type: 'number',
+                  description: 'Only show entries from last N minutes'
                 }
               }
             }
@@ -316,11 +361,15 @@ export class DaisyMCPServer {
       const { name, arguments: args } = request.params;
       
       switch (name) {
-        // Streamlined debugging tools
-        case 'smart_debug':
-          return await this.handleSmartDebug(args);
-        case 'quick_errors':
-          return await this.handleQuickErrors(args);
+        // Focused debugging tools
+        case 'get_errors_only':
+          return await this.handleGetErrorsOnly(args);
+        case 'get_network_failures':
+          return await this.handleGetNetworkFailures(args);
+        case 'get_last_action_context':
+          return await this.handleGetLastActionContext(args);
+        case 'search_logs':
+          return await this.handleSearchLogs(args);
         case 'browser_control':
           return await this.handleBrowserControl(args);
         case 'read_raw_log':
@@ -862,14 +911,24 @@ export class DaisyMCPServer {
     return readRawLog(args);
   }
 
-  private async handleSmartDebug(args: any) {
-    const { smartDebug } = await import('./tools/smart-debug.js');
-    return smartDebug(args, this.getAllLogEntries(), this.parser, this.makeControlApiRequest.bind(this));
+  private async handleGetErrorsOnly(args: any) {
+    const { getErrorsOnly } = await import('./tools/get-errors-only.js');
+    return getErrorsOnly(args, this.getAllLogEntries(), this.parser);
   }
 
-  private async handleQuickErrors(args: any) {
-    const { quickErrors } = await import('./tools/quick-errors.js');
-    return quickErrors(args, this.getAllLogEntries(), this.parser);
+  private async handleGetNetworkFailures(args: any) {
+    const { getNetworkFailures } = await import('./tools/get-network-failures.js');
+    return getNetworkFailures(args, this.getAllLogEntries(), this.parser);
+  }
+
+  private async handleGetLastActionContext(args: any) {
+    const { getLastActionContext } = await import('./tools/get-last-action-context.js');
+    return getLastActionContext(args, this.getAllLogEntries(), this.parser);
+  }
+
+  private async handleSearchLogs(args: any) {
+    const { searchLogs } = await import('./tools/search-logs.js');
+    return searchLogs(args, this.getAllLogEntries(), this.parser);
   }
 
   private async handleBrowserControl(args: any) {
