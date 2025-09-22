@@ -7,13 +7,32 @@
 ## Quick Start
 
 ```bash
-# Install globally
+# Clone and build
+git clone <repository-url>
+cd daisy
+npm install
+npm run build
+
+# Navigate to your project directory
+cd /path/to/your/project
+
+# Run daisy from the built version (use index.js, not cli.js)
+node /path/to/daisy/dist/index.js
+
+# Or add to your project's package.json scripts:
+# "scripts": {
+#   "daisy-dev": "node \"/path/to/daisy/dist/index.js\" --script \"dev\" --port 8080 --debug"
+# }
+# Then run: npm run daisy-dev
+# 
+# Note: Specify --port if your dev server runs on a port other than 3000
+# Note: Specify --script if your dev script name is not auto-detected (dev, start:dev, develop, serve, start)
+```
+
+### Future: Global Installation
+```bash
+# Coming soon - install globally
 npm install -g daisy
-
-# Start debugging in your project
-daisy
-
-# With custom script
 daisy --script "yarn dev"
 ```
 
@@ -72,12 +91,36 @@ daisy --log-level verbose --debug
 daisy --servers-only
 ```
 
-### Auto-Detection Features
+### Auto-Detection Logic
 
-Daisy automatically detects:
-- **Package manager**: npm, yarn, or pnpm (based on lockfiles)
-- **Development script**: Tries `dev`, `start:dev`, `develop`, `serve`, `start` in order
-- **Project type**: Configures optimal settings for your stack
+**Package Manager Detection:**
+- Checks for `pnpm-lock.yaml` → uses `pnpm run`
+- Checks for `yarn.lock` → uses `yarn`
+- Checks for `package-lock.json` → uses `npm run`
+- Default fallback → uses `npm run`
+
+**Script Detection:**
+Daisy looks for these scripts in your `package.json` (in priority order):
+1. `dev` → runs `npm run dev`
+2. `start:dev` → runs `npm run start:dev`
+3. `develop` → runs `npm run develop`
+4. `serve` → runs `npm run serve`
+5. `start` → runs `npm run start`
+
+**Manual Override Examples:**
+```bash
+# For npm start
+daisy --script "start"
+
+# For npm run dev
+daisy --script "dev"
+
+# For custom script
+daisy --script "start:local"
+
+# For yarn dev
+daisy --script "yarn dev"
+```
 
 ## AI Assistant Integration
 
