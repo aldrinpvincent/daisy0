@@ -65,7 +65,7 @@ With one command, Daisy automatically:
 
 ## How It Works
 
-Daisy operates as a unified debugging orchestrator that starts with a single command. When you run `daisy`, it automatically detects your package manager and development script, then launches headless Chrome with debugging enabled, connects to the Chrome DevTools Protocol to capture real-time browser events, and simultaneously starts a web viewer interface and MCP server. All captured events are processed into structured JSON logs with automatic screenshot capture on errors, while the MCP server makes these logs accessible to AI assistants for intelligent error analysis and automated debugging suggestions.
+Daisy operates as a unified debugging orchestrator that starts with a single command. When you run daisy, it automatically detects your package manager and development script, then launches Chrome with debugging enabled, connects to the Chrome DevTools Protocol to capture real-time browser events (console logs, network requests, JavaScript errors, performance metrics), and simultaneously starts a web viewer interface and MCP server. All captured events are processed into structured JSON logs with automatic screenshot capture on errors, stored cross-platform in your home directory. The MCP server makes these logs accessible to AI assistants like Claude or Copilot, enabling intelligent error analysis and automated debugging suggestions, while the web interface provides visual log inspection - creating a complete debugging ecosystem that bridges traditional browser debugging with modern AI-assisted development workflows.
 
 ## Usage
 
@@ -91,7 +91,7 @@ daisy --log-level verbose --debug
 daisy --servers-only
 ```
 
-### Auto-Detection Logic
+### Dev script auto-detection logic
 
 **Package Manager Detection:**
 - Checks for `pnpm-lock.yaml` → uses `pnpm run`
