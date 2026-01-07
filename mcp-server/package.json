@@ -25,7 +25,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@types/node": "^24.5.0",
     "chokidar": "^4.0.3",
     "commander": "^14.0.1",
